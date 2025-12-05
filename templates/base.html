@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bar & Bartender</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+<body>
+    <header class="navbar">
+        <div class="nav-left">
+            <h1><a href="{{ url_for('main.index') }}">🍸 Bar & Bartender</a></h1>
+        </div>
+        <nav class="nav-center">
+            <a class="nav-pill" href="{{ url_for('products.ingredients_master') }}">Master List</a>
+            <a class="nav-pill" href="{{ url_for('secondary.secondary_ingredients') }}">Secondary Ingredients</a>
+            <a class="nav-pill" href="{{ url_for('recipes.recipes_list') }}">Recipes</a>
+        </nav>
+        <div class="nav-right {% if current_user.is_authenticated %}nav-right-auth{% endif %}">
+            {% if current_user.is_authenticated %}
+                <span class="nav-welcome">Welcome, {{ current_user.username }}</span>
+                <a class="nav-logout" href="{{ url_for('auth.logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('auth.login') }}">Login</a>
+                <a href="{{ url_for('auth.register') }}">Register</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <main class="content">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash">
+                    {% for msg in messages %}
+                        <p>{{ msg }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="page-body">
+            {% block page_panel %}
+            <div class="page-panel">
+                {% block content %}{% endblock %}
+            </div>
+            {% endblock %}
+        </div>
+    </main>
+
+    <footer>
+        <p>© {{ current_year }} Bar & Bartender | Crafted by Akhil Soman 🍹</p>
+
+    </footer>
+</body>
+</html>

@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: bar-and-bartender
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bar-bartender-db
+          property: connectionString
+    healthCheckPath: /
+    plan: free
+
+databases:
+  - name: bar-bartender-db
+    plan: free
+    databaseName: bar_bartender
+    user: bar_bartender_user

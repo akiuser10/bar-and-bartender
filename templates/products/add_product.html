@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<h2>Add New Product</h2>
+
+<form method="POST" enctype="multipart/form-data">
+    <div class="table-wrapper">
+    <table class="form-table">
+        <tr>
+            <th id="label-unique-item-product">Unique Item Number</th>
+            <td><input type="text" name="unique_item_number" placeholder="ITEM-000001" title="Unique Item Number" aria-labelledby="label-unique-item-product"></td>
+        </tr>
+        <tr>
+            <th id="label-description-product">Description</th>
+            <td><input type="text" name="description" required placeholder="Product description" title="Description" aria-labelledby="label-description-product"></td>
+        </tr>
+        <tr>
+            <th id="label-supplier-product">Supplier</th>
+            <td><input type="text" name="supplier" placeholder="Supplier Name" title="Supplier" aria-labelledby="label-supplier-product"></td>
+        </tr>
+        <tr>
+            <th id="label-category-product">Category</th>
+            <td>
+                <select name="category" title="Category" aria-labelledby="label-category-product">
+                    <option value="Beverage">Beverage</option>
+                    <option value="Food">Food</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-item-level-product">Item Level</th>
+            <td>
+                <select name="item_level" required title="Item Level" aria-labelledby="label-item-level-product">
+                    <option value="Primary">Primary Item</option>
+                    <option value="Secondary">Secondary Item</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-sub-category-product">Sub-Category</th>
+            <td>
+                <select name="sub_category" title="Sub-Category" aria-labelledby="label-sub-category-product">
+                    <option>Alcohol</option>
+                    <option>Non Alcohol</option>
+                    <option>Juice</option>
+                    <option>Syrup</option>
+                    <option>Puree</option>
+                    <option>Other</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-quantity-product">Quantity</th>
+            <td><input type="number" step="0.01" name="ml_in_bottle" required placeholder="0" title="Quantity" aria-labelledby="label-quantity-product"></td>
+        </tr>
+        <tr>
+            <th id="label-abv-product">ABV %</th>
+            <td><input type="number" step="0.1" name="abv" placeholder="0" title="ABV %" aria-labelledby="label-abv-product"></td>
+        </tr>
+        <tr>
+            <th id="label-selling-unit-product">Selling Unit</th>
+            <td>
+                <select name="selling_unit" title="Selling Unit" aria-labelledby="label-selling-unit-product">
+                    <option>each</option>
+                    <option>ml</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-cost-per-unit-product">Cost per Unit (AED)</th>
+            <td><input type="number" step="0.01" name="cost_per_unit" required placeholder="0.00" title="Cost per Unit (AED)" aria-labelledby="label-cost-per-unit-product"></td>
+        </tr>
+        <tr>
+            <th id="label-purchase-type-product">Purchase Type</th>
+            <td>
+                <select name="purchase_type" title="Purchase Type" aria-labelledby="label-purchase-type-product">
+                    <option>each</option>
+                    <option>case</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-bottles-per-case-product">Bottles per Case</th>
+            <td><input type="number" name="bottles_per_case" value="1" placeholder="1" title="Bottles per Case" aria-labelledby="label-bottles-per-case-product"></td>
+        </tr>
+        <tr>
+            <th id="label-product-image-product">Product Image</th>
+            <td><input type="file" name="image" accept="image/*" title="Product Image" aria-labelledby="label-product-image-product"></td>
+        </tr>
+    </table>
+    </div>
+
+    <div class="actions">
+        <button type="submit" class="btn">Save Product</button>
+        <a href="{{ url_for('products.products') }}" class="btn secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}

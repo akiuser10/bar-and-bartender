@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<div class="panel-header">
+    <h2>Master List</h2>
+    <div class="panel-header-actions">
+        <a class="btn btn-action" href="{{ url_for('products.add_product') }}">+ Add Product</a>
+        <form method="POST" action="{{ url_for('products.delete_selected_ingredients') }}" onsubmit="return confirmDeleteSelected();" class="delete-selected-form">
+            <button type="submit" class="btn btn-danger btn-action" id="deleteSelectedBtn">Delete product</button>
+        </form>
+    </div>
+</div>
+
+<div class="search-container">
+    <input type="text" id="searchBox" placeholder="Search by Description...">
+</div>
+
+<div class="table-wrapper wide-table">
+    <table class="data-table master-table">
+        <colgroup>
+            <col class="col-checkbox">
+            <col class="col-unique">
+            <col class="col-code">
+            <col class="col-description">
+            <col class="col-supplier">
+            <col class="col-category">
+            <col class="col-sub">
+            <col class="col-unit">
+            <col class="col-cost">
+            <col class="col-actions">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>
+                    <input type="checkbox" id="selectAllCheckbox" aria-label="Select all products" title="Select All">
+                </th>
+                <th>Unique Item #</th>
+                <th>Code</th>
+                <th>Description</th>
+                <th>Supplier</th>
+                <th>Category</th>
+                <th>Sub-Category</th>
+                <th>Quantity</th>
+                <th>Cost/Unit (AED)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="productTableBody">
+        {% for row in rows %}
+            <tr class="product-row {{ 'secondary-row' if row.kind == 'secondary' else '' }}" data-description="{{ row.description|lower }}">
+                <td>
+                    {% if row.kind == 'product' %}
+                        <input type="checkbox" name="selected_items" value="{{ row.id }}" class="row-checkbox" aria-label="Select {{ row.description or row.code }} for deletion">
+                    {% else %}
+                        <input type="checkbox" disabled aria-label="Secondary ingredients cannot be deleted" title="Secondary ingredients cannot be deleted">
+                    {% endif %}
+                </td>
+                <td>{{ row.unique_item_number }}</td>
+                <td>{{ row.code }}</td>
+                <td>{{ row.description }}</td>
+                <td>{{ row.supplier }}</td>
+                <td>{{ row.category }}</td>
+                <td>{{ row.sub_category }}</td>
+                <td>{{ row.quantity }}</td>
+                <td>{{ "%.2f"|format(row.cost_per_unit) }}</td>
+                <td class="actions-cell">
+                    {% if row.kind == 'product' %}
+                        <a class="link-action" href="{{ url_for('products.edit_ingredient', id=row.id) }}">Edit</a>
+                        <form method="POST" action="{{ url_for('products.delete_ingredient', id=row.id) }}" onsubmit="return confirm('Are you sure?');" class="inline-form">
+                            <button type="submit" class="link-action">Delete</button>
+                        </form>
+                    {% else %}
+                        <a class="link-action" href="{{ url_for('secondary.view_secondary_ingredient', id=row.id) }}">View</a>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<form class="bulk-upload" method="POST" action="{{ url_for('products.bulk_upload_products') }}" enctype="multipart/form-data">
+    <p><strong>Bulk upload:</strong> Use the Excel format with columns UNIQUE ITEM #, CODE, DESCRIPTION*, SUPPLIER*, CATEGORY*, SUB CATEGORY*, QUANTITY, COST/UNIT (AED)* (asterisk = required). Secondary ingredients are ignored during upload.</p>
+    <div class="bulk-upload-controls">
+        <label for="bulk-upload-file" class="sr-only">Excel file for bulk upload</label>
+        <input type="file" id="bulk-upload-file" name="file" accept=".xlsx,.xls" title="Excel file for bulk upload" aria-label="Excel file for bulk upload">
+        <button type="submit" class="btn">Upload Excel</button>
+    </div>
+</form>
+
+<script>
+function confirmDeleteSelected() {
+    const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+    if (selectedCheckboxes.length === 0) {
+        alert('Please select at least one item to delete.');
+        return false;
+    }
+    
+    if (!confirm(`Are you sure you want to delete ${selectedCheckboxes.length} selected item(s)? This action cannot be undone!`)) {
+        return false;
+    }
+    
+    // Collect selected IDs and add them to the form
+    const form = document.querySelector('.delete-selected-form');
+    if (form) {
+        // Remove any existing hidden inputs
+        form.querySelectorAll('input[name="selected_items"]').forEach(function(input) {
+            input.remove();
+        });
+        
+        // Add selected items as hidden inputs
+        selectedCheckboxes.forEach(function(checkbox) {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'selected_items';
+            hiddenInput.value = checkbox.value;
+            form.appendChild(hiddenInput);
+        });
+    }
+    
+    return true;
+}
+
+// Search functionality and checkbox handling
+document.addEventListener('DOMContentLoaded', function() {
+    const searchBox = document.getElementById('searchBox');
+    const tableBody = document.getElementById('productTableBody');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    
+    // Select all checkbox functionality
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const rowCheckboxes = document.querySelectorAll('.row-checkbox:not([disabled])');
+            rowCheckboxes.forEach(function(checkbox) {
+                // Only select visible rows
+                const row = checkbox.closest('tr');
+                if (row && row.style.display !== 'none') {
+                    checkbox.checked = selectAllCheckbox.checked;
+                }
+            });
+            updateDeleteButtonState();
+        });
+    }
+    
+    // Individual checkbox change handler
+    if (tableBody) {
+        tableBody.addEventListener('change', function(e) {
+            if (e.target.classList.contains('row-checkbox')) {
+                updateSelectAllState();
+                updateDeleteButtonState();
+            }
+        });
+    }
+    
+    function updateSelectAllState() {
+        if (!selectAllCheckbox) return;
+        const visibleCheckboxes = Array.from(document.querySelectorAll('.row-checkbox:not([disabled])')).filter(function(cb) {
+            const row = cb.closest('tr');
+            return row && row.style.display !== 'none';
+        });
+        const checkedVisible = visibleCheckboxes.filter(function(cb) { return cb.checked; });
+        selectAllCheckbox.checked = visibleCheckboxes.length > 0 && checkedVisible.length === visibleCheckboxes.length;
+        selectAllCheckbox.indeterminate = checkedVisible.length > 0 && checkedVisible.length < visibleCheckboxes.length;
+    }
+    
+    function updateDeleteButtonState() {
+        if (!deleteSelectedBtn) return;
+        const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
+        if (selectedCount > 0) {
+            deleteSelectedBtn.disabled = false;
+            deleteSelectedBtn.textContent = `Delete product (${selectedCount})`;
+        } else {
+            deleteSelectedBtn.disabled = true;
+            deleteSelectedBtn.textContent = 'Delete product';
+        }
+    }
+    
+    // Search functionality
+    if (searchBox && tableBody) {
+        searchBox.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            const rows = tableBody.querySelectorAll('.product-row');
+            
+            rows.forEach(function(row) {
+                const description = row.getAttribute('data-description') || '';
+                if (description.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            updateSelectAllState();
+        });
+    }
+    
+    // Initial state
+    updateDeleteButtonState();
+});
+</script>
+{% endblock %}
+

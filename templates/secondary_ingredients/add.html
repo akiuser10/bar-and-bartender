@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<div class="recipe-view-container">
+    <form method="POST" id="secondaryIngredientForm">
+        <div class="recipe-title-section">
+            <input type="text" id="secondary-name" name="name" required value="{{ secondary.name if edit_mode else '' }}" placeholder="Enter ingredient name" title="Name" class="recipe-title-input">
+        </div>
+        <div class="recipe-view-layout">
+            <div class="recipe-table-section">
+                <table class="recipe-cost-table" id="ingredientsTable">
+                    <thead>
+                        <tr>
+                            <th class="actions-column-left"></th>
+                            <th class="code-cell">CODE</th>
+                            <th class="description-cell">DESCRIPTION</th>
+                            <th class="unit-qty-cell">UNIT QTY</th>
+                            <th class="recipe-ml-cell">RECIPE ML</th>
+                            <th class="cost-cell">RECIPE COST</th>
+                            <th class="actions-column-right"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="ingredientRows">
+                        <!-- Rows will be added here by JavaScript -->
+                    </tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td></td>
+                            <td colspan="4"><strong>Total</strong></td>
+                            <td class="cost-cell"><strong id="totalCostDisplay">AED 0.00</strong></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="recipe-sidebar">
+                <div class="recipe-details-section">
+                    <div class="section-header">INGREDIENT DETAILS</div>
+                    <div class="summary-box">
+                        <div class="summary-row">
+                            <span class="summary-label">Unit:</span>
+                            <span class="summary-value">
+                                <select id="secondary-unit" name="unit" title="Unit" class="sidebar-select" required>
+                                    {% set selected_unit = secondary.unit if edit_mode else 'ml' %}
+                                    <option value="ml" {% if selected_unit == 'ml' %}selected{% endif %}>ml</option>
+                                    <option value="grams" {% if selected_unit == 'grams' %}selected{% endif %}>grams</option>
+                                    <option value="pieces" {% if selected_unit == 'pieces' %}selected{% endif %}>pieces</option>
+                                    <option value="cups" {% if selected_unit == 'cups' %}selected{% endif %}>cups</option>
+                                </select>
+                            </span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">RECIPE COST:</span>
+                            <span class="summary-value" id="sidebarTotalCost">AED 0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">TOTAL VOLUME:</span>
+                            <span class="summary-value">
+                                <label for="totalVolumeInput" class="sr-only">Total volume</label>
+                                <input type="number" step="0.01" name="total_volume_ml" id="totalVolumeInput" value="{{ secondary.total_volume_ml if edit_mode else '' }}" placeholder="0" title="Total volume" aria-label="Total volume" class="sidebar-input" required>
+                                <label for="unitSelectSidebar" class="sr-only">Unit</label>
+                                <select name="unit" id="unitSelectSidebar" title="Unit" aria-label="Unit" class="sidebar-select" required>
+                                    {% set selected_unit = secondary.unit if edit_mode else 'ml' %}
+                                    <option value="ml" {% if selected_unit == 'ml' %}selected{% endif %}>ml</option>
+                                    <option value="grams" {% if selected_unit == 'grams' %}selected{% endif %}>grams</option>
+                                    <option value="pieces" {% if selected_unit == 'pieces' %}selected{% endif %}>pieces</option>
+                                    <option value="cups" {% if selected_unit == 'cups' %}selected{% endif %}>cups</option>
+                                </select>
+                            </span>
+                        </div>
+                        <div class="summary-row cost-percent-row">
+                            <span class="summary-label">COST PER UNIT:</span>
+                            <span class="summary-value" id="costPerUnitDisplay">AED 0.0000 / ml</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="method-section">
+                    <div class="section-header">METHOD</div>
+                    <div class="section-content">
+                        <label for="secondary-method" class="sr-only">Method</label>
+                        <textarea id="secondary-method" name="method" rows="8" placeholder="Enter preparation method" title="Method" class="section-textarea">{{ secondary.method if edit_mode else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <datalist id="ingredient-options">
+            {% for option in ingredient_options %}
+            <option value="{{ option.label }}" data-id="{{ option.id }}" data-type="{{ option.type }}" data-cost="{{ option.cost_per_unit }}" data-volume="{{ option.container_volume }}" data-code="{{ option.code }}"></option>
+            {% endfor %}
+        </datalist>
+
+        <div class="actions recipe-actions">
+            <button type="submit" class="btn">{% if edit_mode %}Update Secondary Ingredient{% else %}Create Secondary Ingredient{% endif %}</button>
+            <a href="{{ url_for('secondary.secondary_ingredients') }}" class="btn secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script id="ingredient-data" type="application/json">{{ ingredient_options|tojson|safe }}</script>
+<script id="preset-rows-data" type="application/json">{{ preset_rows|tojson|safe }}</script>
+<script>
+const ingredientOptions = JSON.parse(document.getElementById('ingredient-data').textContent);
+const presetRows = JSON.parse(document.getElementById('preset-rows-data').textContent);
+const rowsContainer = document.getElementById('ingredientRows');
+const totalCostDisplay = document.getElementById('totalCostDisplay');
+const sidebarTotalCost = document.getElementById('sidebarTotalCost');
+const costPerUnitDisplay = document.getElementById('costPerUnitDisplay');
+
+const optionMap = {};
+ingredientOptions.forEach(function(opt) {
+    optionMap[opt.label.toLowerCase()] = opt;
+    const simple = opt.label.split('(')[0].trim().toLowerCase();
+    if (!optionMap[simple]) {
+        optionMap[simple] = opt;
+    }
+});
+
+function findOption(label) {
+    if (!label) return null;
+    const key = label.trim().toLowerCase();
+    if (optionMap[key]) return optionMap[key];
+    const simple = key.split('(')[0].trim();
+    return optionMap[simple] || null;
+}
+
+function createRow(initialData) {
+    initialData = initialData || {};
+    const row = document.createElement('tr');
+    row.className = 'ingredient-row';
+    
+    const rowId = 'row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    row.innerHTML = `
+        <td class="actions-cell-left">
+            <button type="button" class="btn-remove-row" title="Remove Row">-</button>
+        </td>
+        <td class="code-cell">-</td>
+        <td class="description-cell">
+            <input type="text" name="ingredient_label" list="ingredient-options" placeholder="Type ingredient name" autocomplete="off" value="${initialData.label || ''}" class="ingredient-input table-input">
+            <input type="hidden" name="ingredient_id" value="${initialData.id || ''}">
+            <input type="hidden" name="ingredient_type" value="${initialData.type || ''}">
+            <input type="hidden" name="ingredient_unit" value="${initialData.unit || 'ml'}">
+        </td>
+        <td class="unit-qty-cell">-</td>
+        <td class="recipe-ml-cell">
+            <input type="number" step="0.01" min="0" name="ingredient_qty" placeholder="0.00" value="${initialData.qty || ''}" class="qty-input table-input table-input-right">
+        </td>
+        <td class="cost-cell"><span class="row-cost">AED 0.00</span></td>
+        <td class="actions-cell-right">
+            <button type="button" class="btn-add-row" title="Add Row">+</button>
+        </td>
+    `;
+
+    const input = row.querySelector('.ingredient-input');
+    const qtyInput = row.querySelector('.qty-input');
+    const codeCell = row.querySelector('.code-cell');
+    const descriptionCell = row.querySelector('.description-cell');
+    const unitQtyCell = row.querySelector('.unit-qty-cell');
+    const costDisplay = row.querySelector('.row-cost');
+    const hiddenId = row.querySelector('input[name="ingredient_id"]');
+    const hiddenType = row.querySelector('input[name="ingredient_type"]');
+    const hiddenUnit = row.querySelector('input[name="ingredient_unit"]');
+
+    function updateRowCost() {
+        const option = findOption(input.value);
+        const quantity = parseFloat(qtyInput.value || 0);
+        let cost = 0;
+        let code = '-';
+        let unitQty = '-';
+        
+        if (option) {
+            hiddenId.value = option.id || '';
+            hiddenType.value = option.type || '';
+            hiddenUnit.value = option.unit || 'ml';
+            code = option.code || '-';
+            unitQty = option.container_volume ? parseFloat(option.container_volume).toFixed(0) : '-';
+            
+            const costPerUnit = parseFloat(option.cost_per_unit || 0);
+            const containerVolume = parseFloat(option.container_volume || 0);
+            let unitCost = costPerUnit;
+            if (containerVolume > 0) {
+                unitCost = costPerUnit / containerVolume;
+            }
+            cost = unitCost * quantity;
+        } else {
+            hiddenId.value = '';
+            hiddenType.value = '';
+            hiddenUnit.value = 'ml';
+        }
+        
+        codeCell.textContent = code;
+        unitQtyCell.textContent = unitQty;
+        costDisplay.textContent = 'AED ' + cost.toFixed(2);
+        updateTotalCost();
+    }
+
+    input.addEventListener('input', function() {
+        updateRowCost();
+    });
+    
+    input.addEventListener('blur', function() {
+        const option = findOption(input.value);
+        if (option) {
+            input.value = option.label;
+            updateRowCost();
+        }
+    });
+    
+    qtyInput.addEventListener('input', function() {
+        updateRowCost();
+    });
+
+    row.querySelector('.btn-remove-row').addEventListener('click', function() {
+        row.remove();
+        updateTotalCost();
+    });
+    
+    row.querySelector('.btn-add-row').addEventListener('click', function() {
+        createRow();
+    });
+
+    rowsContainer.appendChild(row);
+    updateRowCost();
+}
+
+function updateTotalCost() {
+    let total = 0;
+    rowsContainer.querySelectorAll('.row-cost').forEach(function(span) {
+        const value = parseFloat(span.textContent.replace('AED', '').trim() || 0);
+        total += value;
+    });
+    const totalStr = 'AED ' + total.toFixed(2);
+    totalCostDisplay.innerHTML = '<strong>' + totalStr + '</strong>';
+    sidebarTotalCost.textContent = totalStr;
+    
+    // Update cost per unit
+    const totalVolume = parseFloat(document.getElementById('totalVolumeInput').value || 0);
+    const unit = document.getElementById('unitSelectSidebar').value || 'ml';
+    let costPerUnit = 0;
+    if (totalVolume > 0) {
+        costPerUnit = total / totalVolume;
+    }
+    costPerUnitDisplay.textContent = 'AED ' + costPerUnit.toFixed(4) + ' / ' + unit;
+}
+
+// Update cost when volume/unit changes
+document.getElementById('totalVolumeInput').addEventListener('input', function() {
+    updateTotalCost();
+});
+
+document.getElementById('unitSelectSidebar').addEventListener('change', function() {
+    // Sync with main unit select
+    document.getElementById('secondary-unit').value = this.value;
+    updateTotalCost();
+});
+
+// Sync main unit select with sidebar
+document.getElementById('secondary-unit').addEventListener('change', function() {
+    document.getElementById('unitSelectSidebar').value = this.value;
+    updateTotalCost();
+});
+
+if (presetRows && presetRows.length > 0) {
+    presetRows.forEach(function(row) {
+        createRow({
+            label: row.label || '',
+            id: row.id || '',
+            type: row.type || '',
+            qty: row.qty || '',
+            code: row.code || ''
+        });
+    });
+    updateTotalCost();
+}
+
+// Ensure at least one editable row exists
+if (rowsContainer.querySelectorAll('.ingredient-row').length === 0) {
+    createRow();
+}
+</script>
+{% endblock %}

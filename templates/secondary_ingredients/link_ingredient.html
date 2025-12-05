@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<div class="panel-header">
+    <h2>Link Ingredients to {{ secondary.name }}</h2>
+    <a class="btn secondary" href="{{ url_for('secondary.view_secondary_ingredient', id=secondary.id) }}">Back to View</a>
+</div>
+
+<div class="page-panel">
+    <h3>Current Ingredients</h3>
+    {% if existing_items %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Unit</th>
+                <th>Cost</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in existing_items %}
+            <tr>
+                <td>{{ item.product.description if item.product else 'N/A' }}</td>
+                <td>{{ "%.2f"|format(item.quantity) }}</td>
+                <td>{{ item.unit }}</td>
+                <td>AED {{ "%.2f"|format(item.calculate_cost()) }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('secondary.delete_ingredient_item', id=item.id) }}" style="display: inline;" onsubmit="return confirm('Delete this ingredient?');">
+                        <button type="submit" class="link-action">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No ingredients linked yet.</p>
+    {% endif %}
+
+    <h3 style="margin-top: 30px;">Add New Ingredient</h3>
+    <form method="POST" style="max-width: 600px;">
+        <div style="margin-bottom: 15px;">
+            <label for="product_id" style="display: block; margin-bottom: 5px; font-weight: bold;">Product/Ingredient:</label>
+            <select id="product_id" name="product_id" required style="width: 100%; padding: 8px;">
+                <option value="">-- Select Product --</option>
+                {% for product in products %}
+                <option value="{{ product.id }}">{{ product.description }} ({{ product.barbuddy_code }}) - AED {{ "%.2f"|format(product.cost_per_unit or 0) }}/{{ product.selling_unit or 'unit' }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label for="quantity" style="display: block; margin-bottom: 5px; font-weight: bold;">Quantity:</label>
+            <input type="number" id="quantity" name="quantity" step="0.01" min="0.01" required style="width: 100%; padding: 8px;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label for="unit" style="display: block; margin-bottom: 5px; font-weight: bold;">Unit:</label>
+            <select id="unit" name="unit" required style="width: 100%; padding: 8px;">
+                <option value="ml" selected>ml</option>
+                <option value="grams">grams</option>
+                <option value="pieces">pieces</option>
+                <option value="cups">cups</option>
+            </select>
+        </div>
+        
+        <div>
+            <button type="submit" class="btn">Link Ingredient</button>
+            <a href="{{ url_for('secondary.view_secondary_ingredient', id=secondary.id) }}" class="btn secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+

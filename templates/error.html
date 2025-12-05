@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<h2>Error</h2>
+<div class="note-card error-card">
+    <p><strong>Error:</strong> {{ error }}</p>
+    <div class="actions">
+        <a class="btn secondary" href="{{ url_for('main.index') }}">Return to Home</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<h2>Add New Product</h2>
+
+<form method="POST" enctype="multipart/form-data">
+    <div class="table-wrapper">
+    <table class="form-table">
+        <tr>
+            <th id="label-unique-item"><label for="unique_item_number">Unique Item Number</label></th>
+            <td><input type="text" id="unique_item_number" name="unique_item_number" placeholder="ITEM-000001" title="Unique Item Number" aria-labelledby="label-unique-item" aria-label="Unique Item Number"></td>
+        </tr>
+        <tr>
+            <th id="label-description"><label for="description">Description</label></th>
+            <td><input type="text" id="description" name="description" required placeholder="Product description" title="Description" aria-labelledby="label-description" aria-label="Description"></td>
+        </tr>
+        <tr>
+            <th id="label-supplier"><label for="supplier">Supplier</label></th>
+            <td><input type="text" id="supplier" name="supplier" placeholder="Supplier Name" title="Supplier" aria-labelledby="label-supplier" aria-label="Supplier"></td>
+        </tr>
+        <tr>
+            <th id="label-category"><label for="category">Category</label></th>
+            <td>
+                <select id="category" name="category" title="Category" aria-labelledby="label-category" aria-label="Category">
+                    <option value="Beverage">Beverage</option>
+                    <option value="Food">Food</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-item-level"><label for="item_level">Item Level</label></th>
+            <td>
+                <select id="item_level" name="item_level" required title="Item Level" aria-labelledby="label-item-level" aria-label="Item Level">
+                    <option value="Primary">Primary Item</option>
+                    <option value="Secondary">Secondary Item</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-sub-category"><label for="sub_category">Sub-Category</label></th>
+            <td>
+                <select id="sub_category" name="sub_category" title="Sub-Category" aria-labelledby="label-sub-category" aria-label="Sub-Category">
+                    <option value="Alcohol">Alcohol</option>
+                    <option value="Non Alcohol">Non Alcohol</option>
+                    <option value="Non-Alcohol">Non-Alcohol</option>
+                    <option value="Fruits">Fruits</option>
+                    <option value="Vegetables">Vegetables</option>
+                    <option value="Dairy">Dairy</option>
+                    <option value="Syrups & Purees">Syrups & Purees</option>
+                    <option value="Syrup">Syrup</option>
+                    <option value="Puree">Puree</option>
+                    <option value="Juice">Juice</option>
+                    <option value="Other">Other</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-quantity"><label for="ml_in_bottle">Quantity</label></th>
+            <td><input type="number" id="ml_in_bottle" step="0.01" name="ml_in_bottle" value="0" placeholder="0" title="Quantity" aria-labelledby="label-quantity" aria-label="Quantity"></td>
+        </tr>
+        <tr>
+            <th id="label-selling-unit"><label for="selling_unit">Selling Unit</label></th>
+            <td>
+                <select id="selling_unit" name="selling_unit" required title="Selling Unit" aria-labelledby="label-selling-unit" aria-label="Selling Unit">
+                    <option value="ml">ml</option>
+                    <option value="grams">grams</option>
+                    <option value="pieces">pieces</option>
+                    <option value="cups">cups</option>
+                    <option value="each">each</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-cost-per-unit"><label for="cost_per_unit">Cost per Unit (AED)</label></th>
+            <td><input type="number" id="cost_per_unit" step="0.01" name="cost_per_unit" required placeholder="0.00" title="Cost per Unit (AED)" aria-labelledby="label-cost-per-unit" aria-label="Cost per Unit (AED)"></td>
+        </tr>
+        <tr>
+            <th id="label-purchase-type"><label for="purchase_type">Purchase Type</label></th>
+            <td>
+                <select id="purchase_type" name="purchase_type" title="Purchase Type" aria-labelledby="label-purchase-type" aria-label="Purchase Type">
+                    <option value="each">each</option>
+                    <option value="case">case</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-bottles-per-case"><label for="bottles_per_case">Bottles per Case</label></th>
+            <td><input type="number" id="bottles_per_case" name="bottles_per_case" value="1" placeholder="1" title="Bottles per Case" aria-labelledby="label-bottles-per-case" aria-label="Bottles per Case"></td>
+        </tr>
+        <tr>
+            <th id="label-product-image"><label for="image">Product Image</label></th>
+            <td><input type="file" id="image" name="image" accept="image/*" title="Product Image" placeholder="Select image file" aria-labelledby="label-product-image" aria-label="Product Image"></td>
+        </tr>
+    </table>
+    </div>
+
+    <div class="actions">
+        <button type="submit" class="btn">Save Product</button>
+        <a href="{{ url_for('products.ingredients_master') }}" class="btn secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
+

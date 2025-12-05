@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<h2>Login</h2>
+<form method="POST">
+    <label for="email">Email:</label>
+    <input type="email" id="email" name="email" required placeholder="Enter your email" title="Email">
+
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" required placeholder="Enter your password" title="Password">
+
+    <div class="actions">
+        <button type="submit" class="btn">Login</button>
+        <a href="{{ url_for('auth.register') }}" class="btn secondary">Need an account?</a>
+    </div>
+</form>
+{% endblock %}

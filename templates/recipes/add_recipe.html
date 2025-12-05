@@ -1,0 +1,423 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<div class="recipe-view-container">
+<form method="POST" enctype="multipart/form-data" id="categoryRecipeForm">
+    <div class="recipe-title-section">
+        <input type="text" id="recipe-title" name="title" required placeholder="Enter {{ add_label|lower() }} name" title="Recipe Name" value="{{ recipe.title if edit_mode else '' }}" class="recipe-title-input">
+    </div>
+        <div class="recipe-view-layout">
+            <div class="recipe-table-section">
+                <table class="recipe-cost-table" id="ingredientsTable">
+                    <thead>
+                        <tr>
+                            <th class="actions-column-left"></th>
+                            <th class="code-cell">CODE</th>
+                            <th class="description-cell">DESCRIPTION</th>
+                            <th class="unit-qty-cell">UNIT QTY</th>
+                            <th class="recipe-ml-cell">RECIPE ML</th>
+                            <th class="cost-cell">RECIPE COST</th>
+                            <th class="actions-column-right"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="ingredientRows">
+                        <!-- Rows will be added here by JavaScript -->
+                    </tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td></td>
+                            <td colspan="4"><strong>Total</strong></td>
+                            <td class="cost-cell"><strong id="totalCostDisplay">AED 0.00</strong></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="recipe-sidebar">
+                <div class="method-section">
+                    <div class="section-header">METHOD</div>
+                    <div class="section-content">
+                        <label for="recipe-method" class="sr-only">Method / Notes</label>
+                        <textarea id="recipe-method" name="method" rows="8" placeholder="Enter preparation method" title="Method / Notes" class="section-textarea">{{ recipe.method if edit_mode else '' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="garnish-section">
+                    <div class="section-header">GARNISH:</div>
+                    <div class="section-content">
+                        <label for="recipe-garnish" class="sr-only">Garnish</label>
+                        <textarea id="recipe-garnish" name="garnish" rows="4" placeholder="Enter garnish details (optional)" title="Garnish" class="section-textarea section-textarea-small">{{ recipe.garnish if edit_mode and recipe.garnish else '' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="recipe-details-section">
+                    <div class="section-header">RECIPE DETAILS</div>
+                    <div class="summary-box">
+                        <div class="summary-row">
+                            <span class="summary-label">RECIPE COST:</span>
+                            <span class="summary-value" id="sidebarTotalCost">AED 0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">SELLING PRICE:</span>
+                            <span class="summary-value">
+                                <input type="number" id="recipe-selling-price" step="0.01" min="0" name="selling_price" title="Selling Price (AED)" value="{{ recipe.selling_price if edit_mode and recipe.selling_price else '0' }}" placeholder="0.00" class="sidebar-input">
+                            </span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">VAT %:</span>
+                            <span class="summary-value">
+                                <input type="number" id="recipe-vat-percentage" step="0.01" min="0" max="100" name="vat_percentage" title="VAT Percentage" value="{{ recipe.vat_percentage if edit_mode and recipe.vat_percentage else '0' }}" placeholder="0.00" class="sidebar-input">
+                            </span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">SERVICE CHARGE %:</span>
+                            <span class="summary-value">
+                                <input type="number" id="recipe-service-charge-percentage" step="0.01" min="0" max="100" name="service_charge_percentage" title="Service Charge Percentage" value="{{ recipe.service_charge_percentage if edit_mode and recipe.service_charge_percentage else '0' }}" placeholder="0.00" class="sidebar-input">
+                            </span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">GOVERNMENT FEES %:</span>
+                            <span class="summary-value">
+                                <input type="number" id="recipe-government-fees-percentage" step="0.01" min="0" max="100" name="government_fees_percentage" title="Government Fees Percentage" value="{{ recipe.government_fees_percentage if edit_mode and recipe.government_fees_percentage else '0' }}" placeholder="0.00" class="sidebar-input">
+                            </span>
+                        </div>
+                        <div class="summary-row cost-percent-row">
+                            <span class="summary-label">COST % OF SP:</span>
+                            <span class="summary-value" id="costPercentDisplay">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <datalist id="ingredient-options">
+            {% for option in ingredient_options %}
+            <option value="{{ option.label }}" data-id="{{ option.id }}" data-type="{{ option.type }}" data-cost="{{ option.cost_per_unit }}" data-volume="{{ option.container_volume }}" data-code="{{ option.code }}" data-unit="{{ option.unit }}"></option>
+            {% endfor %}
+        </datalist>
+
+        <div class="actions recipe-actions">
+        <button type="submit" class="btn">{% if edit_mode %}Update Recipe{% else %}Save Recipe{% endif %}</button>
+            <a href="{{ url_for('recipes.recipe_list', category=category_slug) }}" class="btn secondary">Cancel</a>
+    </div>
+</form>
+</div>
+
+<script id="category-ingredient-data" type="application/json">{{ ingredient_options|tojson|safe }}</script>
+<script id="preset-rows-data" type="application/json">{% if edit_mode and preset_rows %}{{ preset_rows|tojson|safe }}{% else %}[]{% endif %}</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ingredientDataEl = document.getElementById('category-ingredient-data');
+    const presetDataEl = document.getElementById('preset-rows-data');
+    
+    if (!ingredientDataEl || !presetDataEl) {
+        return;
+    }
+    
+    const ingredientOptions = JSON.parse(ingredientDataEl.textContent || '[]');
+    const presetRows = JSON.parse(presetDataEl.textContent || '[]');
+    const rowsContainer = document.getElementById('ingredientRows');
+    const totalCostDisplay = document.getElementById('totalCostDisplay');
+    const sidebarTotalCost = document.getElementById('sidebarTotalCost');
+    const sellingPriceInput = document.getElementById('recipe-selling-price');
+    const costPercentDisplay = document.getElementById('costPercentDisplay');
+
+    const optionMap = {};
+    ingredientOptions.forEach(function(opt) {
+        const labelKey = (opt.label || '').toLowerCase();
+        if (labelKey) {
+            optionMap[labelKey] = opt;
+            const simple = labelKey.split('(')[0].trim();
+            if (simple && !optionMap[simple]) {
+                optionMap[simple] = opt;
+            }
+        }
+        const descriptionKey = (opt.description || '').toLowerCase();
+        if (descriptionKey) {
+            optionMap[descriptionKey] = opt;
+        }
+        if (opt.code) {
+            optionMap[String(opt.code).toLowerCase()] = opt;
+        }
+    });
+
+    function findOption(label) {
+        if (!label) return null;
+        const key = label.trim().toLowerCase();
+        if (optionMap[key]) return optionMap[key];
+        const simple = key.split('(')[0].trim().toLowerCase();
+        if (simple && optionMap[simple]) {
+            return optionMap[simple];
+        }
+        return null;
+    }
+
+    function createRow(initialData) {
+        initialData = initialData || {};
+        const row = document.createElement('tr');
+        row.className = 'ingredient-row';
+        
+        const rowId = 'row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        row.innerHTML = `
+            <td class="actions-cell-left">
+                <button type="button" class="btn-remove-row" title="Remove Row">-</button>
+            </td>
+            <td class="code-cell">-</td>
+            <td class="description-cell">
+                <input type="text" name="ingredient_label" list="ingredient-options" placeholder="Type ingredient name" autocomplete="off" value="${initialData.description || initialData.label || ''}" class="ingredient-input table-input">
+                <input type="hidden" name="ingredient_id" value="${initialData.id || ''}">
+                <input type="hidden" name="ingredient_type" value="${initialData.type || ''}">
+                <input type="hidden" name="ingredient_unit" value="${initialData.unit || 'ml'}">
+            </td>
+            <td class="unit-qty-cell">-</td>
+            <td class="recipe-ml-cell">
+                <input type="number" step="0.01" min="0" name="ingredient_qty" placeholder="0.00" value="${initialData.qty || ''}" class="qty-input table-input table-input-right">
+            </td>
+            <td class="cost-cell"><span class="row-cost">AED 0.00</span></td>
+            <td class="actions-cell-right">
+                <button type="button" class="btn-add-row" title="Add Row">+</button>
+            </td>
+        `;
+
+        const input = row.querySelector('.ingredient-input');
+        const qtyInput = row.querySelector('.qty-input');
+        const codeCell = row.querySelector('.code-cell');
+        const descriptionCell = row.querySelector('.description-cell');
+        const unitQtyCell = row.querySelector('.unit-qty-cell');
+        const costDisplay = row.querySelector('.row-cost');
+        const hiddenId = row.querySelector('input[name="ingredient_id"]');
+        const hiddenType = row.querySelector('input[name="ingredient_type"]');
+        const hiddenUnit = row.querySelector('input[name="ingredient_unit"]');
+
+        function updateRowCost() {
+            const option = findOption(input.value);
+            const quantity = parseFloat(qtyInput.value || 0);
+            let cost = 0;
+            let code = initialData.code || '-';
+            let unitQty = '-';
+            let descriptionText = initialData.description || input.value;
+            
+            if (option) {
+                hiddenId.value = option.id || '';
+                hiddenType.value = option.type || '';
+                hiddenUnit.value = option.unit || 'ml';
+                code = option.code || code || '-';
+                unitQty = option.container_volume ? parseFloat(option.container_volume).toFixed(0) : '-';
+                descriptionText = option.description || option.label?.split('(')[0].trim() || descriptionText;
+                
+                const costPerUnit = parseFloat(option.cost_per_unit || 0);
+                const containerVolume = parseFloat(option.container_volume || 0);
+                let unitCost = costPerUnit;
+                if (containerVolume > 0) {
+                    unitCost = costPerUnit / containerVolume;
+                }
+                cost = unitCost * quantity;
+            } else {
+                hiddenId.value = '';
+                hiddenType.value = '';
+                hiddenUnit.value = 'ml';
+            }
+            
+            if (descriptionText) {
+                input.value = descriptionText;
+            }
+            codeCell.textContent = code || '-';
+            unitQtyCell.textContent = unitQty;
+            costDisplay.textContent = 'AED ' + cost.toFixed(2);
+            updateTotalCost();
+        }
+
+        input.addEventListener('input', function() {
+            updateRowCost();
+        });
+        
+        input.addEventListener('blur', function() {
+            const option = findOption(input.value);
+            if (option) {
+                input.value = option.description || option.label;
+                updateRowCost();
+            }
+        });
+        
+        qtyInput.addEventListener('input', function() {
+            updateRowCost();
+        });
+
+        row.querySelector('.btn-remove-row').addEventListener('click', function() {
+            row.remove();
+            updateTotalCost();
+        });
+        
+        row.querySelector('.btn-add-row').addEventListener('click', function() {
+            createRow();
+        });
+
+        rowsContainer.appendChild(row);
+        
+        // If initial data is provided, find the option and set values properly
+        if (initialData && (initialData.id || initialData.label)) {
+            let option = null;
+            // Try to find option by ID and type first (most reliable)
+            if (initialData.id && initialData.type) {
+                for (let opt of ingredientOptions) {
+                    // Use String() to ensure type matching works correctly
+                    if (String(opt.id) === String(initialData.id) && opt.type === initialData.type) {
+                        option = opt;
+                        break;
+                    }
+                }
+            }
+            // Fallback to label/description matching
+            if (!option && initialData.label) {
+                option = findOption(initialData.label);
+            }
+            if (!option && initialData.description) {
+                option = findOption(initialData.description);
+            }
+            
+            if (option) {
+                // Set the input to the option's description for display
+                input.value = option.description || option.label;
+                hiddenId.value = String(option.id || '');
+                hiddenType.value = option.type || '';
+                hiddenUnit.value = option.unit || initialData.unit || 'ml';
+            } else if (initialData.label) {
+                // If option not found but we have a label, use it
+                input.value = initialData.description || initialData.label;
+                if (initialData.id) {
+                    hiddenId.value = String(initialData.id);
+                }
+                if (initialData.type) {
+                    hiddenType.value = initialData.type;
+                }
+                hiddenUnit.value = initialData.unit || 'ml';
+            }
+            
+            // Set quantity if provided
+            if (initialData.qty !== undefined && initialData.qty !== null && initialData.qty !== '') {
+                qtyInput.value = initialData.qty;
+            }
+        }
+        
+        // Update row cost which will populate code, unit qty, and cost
+        // This will also try to find the option again based on the input value
+        updateRowCost();
+    }
+
+    function updateTotalCost() {
+        let total = 0;
+        rowsContainer.querySelectorAll('.row-cost').forEach(function(span) {
+            const value = parseFloat(span.textContent.replace('AED', '').trim() || 0);
+            total += value;
+        });
+        const totalStr = 'AED ' + total.toFixed(2);
+        totalCostDisplay.innerHTML = '<strong>' + totalStr + '</strong>';
+        sidebarTotalCost.textContent = totalStr;
+        
+        // Update cost percentage
+        // Selling price is inclusive of VAT, Service Charge, and Government Fees
+        // Calculate base selling price by deducting fees
+        const sellingPrice = parseFloat(sellingPriceInput.value || 0);
+        const vatInput = document.getElementById('recipe-vat-percentage');
+        const serviceChargeInput = document.getElementById('recipe-service-charge-percentage');
+        const govtFeesInput = document.getElementById('recipe-government-fees-percentage');
+        
+        const vatPercent = parseFloat(vatInput?.value || 0) || 0;
+        const serviceChargePercent = parseFloat(serviceChargeInput?.value || 0) || 0;
+        const govtFeesPercent = parseFloat(govtFeesInput?.value || 0) || 0;
+        
+        if (sellingPrice > 0) {
+            // Calculate base selling price (before fees)
+            // SP_inclusive = Base_SP × (1 + fees/100)
+            // Base_SP = SP_inclusive / (1 + fees/100)
+            const totalFeesPercent = vatPercent + serviceChargePercent + govtFeesPercent;
+            let baseSellingPrice = sellingPrice;
+            if (totalFeesPercent > 0) {
+                baseSellingPrice = sellingPrice / (1 + totalFeesPercent / 100);
+            }
+            const percent = (total / baseSellingPrice) * 100;
+            costPercentDisplay.textContent = percent.toFixed(2) + '%';
+        } else {
+            costPercentDisplay.textContent = '--';
+        }
+    }
+
+    // Per-row + button handles adding; no footer add button needed
+
+    if (sellingPriceInput) {
+        sellingPriceInput.addEventListener('input', updateTotalCost);
+    }
+    
+    // Add event listeners for fee inputs
+    const vatInput = document.getElementById('recipe-vat-percentage');
+    const serviceChargeInput = document.getElementById('recipe-service-charge-percentage');
+    const govtFeesInput = document.getElementById('recipe-government-fees-percentage');
+    
+    if (vatInput) {
+        vatInput.addEventListener('input', updateTotalCost);
+    }
+    if (serviceChargeInput) {
+        serviceChargeInput.addEventListener('input', updateTotalCost);
+    }
+    if (govtFeesInput) {
+        govtFeesInput.addEventListener('input', updateTotalCost);
+    }
+
+    // Pre-populate rows if in edit mode
+    if (presetRows && presetRows.length > 0) {
+        presetRows.forEach(function(row) {
+            // Skip rows with null or missing both id and label
+            if (!row || (!row.id && !row.label)) {
+                return;
+            }
+            // Pass the row data directly - createRow will handle finding the option
+            createRow({
+                label: row.label || '',
+                id: row.id || '',
+                type: row.type || 'Product',
+                qty: row.qty || 0,
+                unit: row.unit || 'ml',
+                code: row.code || ''
+            });
+        });
+        updateTotalCost();
+    }
+
+    // Ensure at least one editable row exists
+    if (rowsContainer.querySelectorAll('.ingredient-row').length === 0) {
+        createRow();
+    }
+    
+    // Initial cost calculation
+    updateTotalCost();
+    
+    // Handle image preview
+    const imageUpload = document.getElementById('recipe-image-upload');
+    if (imageUpload) {
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    let previewDiv = document.querySelector('.image-preview');
+                    if (!previewDiv) {
+                        previewDiv = document.createElement('div');
+                        previewDiv.className = 'image-preview';
+                        imageUpload.parentNode.appendChild(previewDiv);
+                    }
+                    let img = previewDiv.querySelector('img');
+                    if (!img) {
+                        img = document.createElement('img');
+                        img.className = 'preview-image';
+                        previewDiv.appendChild(img);
+                    }
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

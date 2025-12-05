@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<div class="recipe-view-container">
+    <h2>{{ secondary.name }}</h2>
+
+    <div class="recipe-view-layout">
+        <div class="recipe-table-section">
+            <table class="recipe-cost-table">
+                <thead>
+                    <tr>
+                        <th class="code-cell">CODE</th>
+                        <th class="description-cell">DESCRIPTION</th>
+                        <th class="unit-qty-cell">UNIT QTY</th>
+                        <th class="recipe-ml-cell">RECIPE ML</th>
+                        <th class="cost-cell">RECIPE COST</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set total_cost = 0.0 %}
+                    {% set has_ingredients = false %}
+                    {% if secondary.ingredients %}
+                        {% for item in secondary.ingredients %}
+                            {% if item.product %}
+                                {% set has_ingredients = true %}
+                                {% set cost = item.calculate_cost() %}
+                                {% set total_cost = total_cost + cost %}
+                                <tr>
+                                    <td class="code-cell">{{ item.product.barbuddy_code or 'N/A' }}</td>
+                                    <td class="description-cell">{{ item.product.description or 'N/A' }}</td>
+                                    <td class="unit-qty-cell">{{ "%.0f"|format(item.product.ml_in_bottle or 0) }}</td>
+                                    {% set display_unit = item.unit %}
+                                    {% if display_unit and display_unit|lower == 'each' %}
+                                        {% set display_unit = '' %}
+                                    {% endif %}
+                                    <td class="recipe-ml-cell">
+                                        {{ "%.2f"|format(item.quantity) }}{% if display_unit %} {{ display_unit }}{% endif %}
+                                    </td>
+                                    <td class="cost-cell">AED {{ "%.2f"|format(cost) }}</td>
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                    {% if has_ingredients %}
+                        <tr class="total-row">
+                            <td colspan="4"><strong>Total</strong></td>
+                            <td class="cost-cell"><strong>AED {{ "%.2f"|format(total_cost) }}</strong></td>
+                        </tr>
+                    {% else %}
+                        <tr class="empty-state-row">
+                            <td colspan="5">No ingredients added yet.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="recipe-sidebar">
+            <div class="recipe-details-section">
+                <div class="section-header">INGREDIENT DETAILS</div>
+                <div class="summary-box">
+                    <div class="summary-row">
+                        <span class="summary-label">Unit:</span>
+                        <span class="summary-value">{{ secondary.unit }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">RECIPE COST:</span>
+                        <span class="summary-value">AED {{ "%.2f"|format(total_cost) }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">TOTAL VOLUME:</span>
+                        <span class="summary-value">{{ "%.2f"|format(secondary.total_volume_ml) }} {{ secondary.unit }}</span>
+                    </div>
+                    <div class="summary-row cost-percent-row">
+                        <span class="summary-label">COST PER UNIT:</span>
+                        <span class="summary-value">AED {{ "%.4f"|format(secondary.calculate_cost_per_unit()) }} / {{ secondary.unit }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="method-section">
+                <div class="section-header">METHOD</div>
+                <div class="section-content">
+                    {{ secondary.method or "No method provided." }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions recipe-actions">
+        <a class="btn secondary" href="{{ url_for('secondary.secondary_ingredients') }}">Back to Secondary Ingredients</a>
+        <a class="btn" href="{{ url_for('secondary.edit_secondary_ingredient', id=secondary.id) }}">Edit Secondary Ingredient</a>
+        <a class="btn btn-primary" href="{{ url_for('secondary.link_ingredient_to_secondary', id=secondary.id) }}">Link Ingredients</a>
+    </div>
+</div>
+{% endblock %}

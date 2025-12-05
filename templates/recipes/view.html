@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<div class="recipe-view-container">
+    <h2>{{ recipe.title }}</h2>
+
+    <div class="recipe-view-layout">
+        <div class="recipe-table-section">
+            <table class="recipe-cost-table">
+                <thead>
+                    <tr>
+                        <th class="code-cell">CODE</th>
+                        <th class="description-cell">DESCRIPTION</th>
+                        <th class="unit-qty-cell">UNIT QTY</th>
+                        <th class="recipe-ml-cell">RECIPE ML</th>
+                        <th class="cost-cell">RECIPE COST</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set total_cost = 0.0 %}
+                    {% set has_ingredients = false %}
+                    {% if recipe.ingredients %}
+                        {% for i in recipe.ingredients %}
+                            {% set ingredient = i.get_product() %}
+                            {% if ingredient %}
+                                {% set has_ingredients = true %}
+                                {% set ingredient_type = ingredient.__class__.__name__ %}
+                                {% set qty = i.get_quantity() %}
+                                {% set cost = i.calculate_cost() %}
+                                {% set total_cost = total_cost + cost %}
+                                <tr>
+                                    <td class="code-cell">
+                                        {% if ingredient_type == 'Product' %}
+                                            {{ ingredient.barbuddy_code or 'N/A' }}
+                                        {% elif ingredient_type == 'HomemadeIngredient' %}
+                                            {{ ingredient.unique_code or 'N/A' }}
+                                        {% elif ingredient_type == 'Recipe' %}
+                                            {{ ingredient.recipe_code or 'N/A' }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td class="description-cell">
+                                        {% if ingredient_type == 'Product' %}
+                                            {{ ingredient.description or 'N/A' }}
+                                        {% elif ingredient_type == 'HomemadeIngredient' %}
+                                            {{ ingredient.name }} (Secondary)
+                                        {% elif ingredient_type == 'Recipe' %}
+                                            {{ ingredient.title }} (Recipe)
+                                        {% else %}
+                                            Unknown
+                                        {% endif %}
+                                    </td>
+                                    <td class="unit-qty-cell">
+                                        {% if ingredient_type == 'Product' %}
+                                            {{ "%.0f"|format(ingredient.ml_in_bottle or 0) }}
+                                        {% elif ingredient_type == 'HomemadeIngredient' %}
+                                            {{ "%.2f"|format(ingredient.total_volume_ml or 0) }}
+                                        {% else %}
+                                            1
+                                        {% endif %}
+                                    </td>
+                                    {% set display_unit = i.unit %}
+                                    {% if display_unit and display_unit|lower == 'each' %}
+                                        {% set display_unit = '' %}
+                                    {% endif %}
+                                    <td class="recipe-ml-cell">
+                                        {{ "%.2f"|format(qty) }}{% if display_unit %} {{ display_unit }}{% endif %}
+                                    </td>
+                                    <td class="cost-cell">AED {{ "%.2f"|format(cost) }}</td>
+                                </tr>
+                                {% if ingredient_type == 'HomemadeIngredient' %}
+                                    {% set sec_ingredients = ingredient.ingredients %}
+                                    {% if sec_ingredients %}
+                                        {% for component in sec_ingredients %}
+                                            {% if component.product %}
+                                                {% set comp_cost = component.calculate_cost() %}
+                                                {% set total_cost = total_cost + comp_cost %}
+                                                <tr class="sub-ingredient-row">
+                                                    <td class="code-cell">{{ component.product.barbuddy_code or 'N/A' }}</td>
+                                                    <td class="description-cell">↳ {{ component.product.description or 'N/A' }}</td>
+                                                    <td class="unit-qty-cell">{{ "%.0f"|format(component.product.ml_in_bottle or 0) }}</td>
+                                                    {% set comp_unit = component.unit %}
+                                                    {% if comp_unit and comp_unit|lower == 'each' %}
+                                                        {% set comp_unit = '' %}
+                                                    {% endif %}
+                                                    <td class="recipe-ml-cell">
+                                                        {{ "%.2f"|format(component.quantity) }}{% if comp_unit %} {{ comp_unit }}{% endif %}
+                                                    </td>
+                                                    <td class="cost-cell">AED {{ "%.2f"|format(comp_cost) }}</td>
+                                                </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                    {% if has_ingredients %}
+                        <tr class="total-row">
+                            <td colspan="4"><strong>Total</strong></td>
+                            <td><strong>AED {{ "%.2f"|format(recipe.calculate_total_cost()) }}</strong></td>
+                        </tr>
+                    {% else %}
+                        <tr class="empty-state-row">
+                            <td colspan="5">No ingredients added yet.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="recipe-sidebar">
+            <div class="method-section">
+                <div class="section-header">METHOD</div>
+                <div class="section-content">
+                    {{ recipe.method or "No method provided." }}
+                </div>
+            </div>
+
+            <div class="garnish-section">
+                <div class="section-header">GARNISH:</div>
+                <div class="section-content">
+                    {{ recipe.garnish if recipe.garnish else "No garnish specified." }}
+                </div>
+            </div>
+
+            <div class="recipe-details-section">
+                <div class="section-header">RECIPE DETAILS</div>
+                <div class="summary-box">
+                    <div class="summary-row">
+                        <span class="summary-label">RECIPE COST:</span>
+                        <span class="summary-value">AED {{ "%.2f"|format(recipe.calculate_total_cost()) }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">SELLING PRICE:</span>
+                        <span class="summary-value">
+                            {% set sp = recipe.selling_price_value() %}
+                            {% if sp and sp > 0 %}
+                                AED {{ "%.2f"|format(sp) }}
+                            {% else %}
+                                --
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">VAT %:</span>
+                        <span class="summary-value">
+                            {% set vat = recipe.vat_percentage or 0 %}
+                            {{ "%.2f"|format(vat) }}%
+                        </span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">SERVICE CHARGE %:</span>
+                        <span class="summary-value">
+                            {% set sc = recipe.service_charge_percentage or 0 %}
+                            {{ "%.2f"|format(sc) }}%
+                        </span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">GOVERNMENT FEES %:</span>
+                        <span class="summary-value">
+                            {% set gf = recipe.government_fees_percentage or 0 %}
+                            {{ "%.2f"|format(gf) }}%
+                        </span>
+                    </div>
+                    <div class="summary-row cost-percent-row">
+                        <span class="summary-label">COST % OF SP:</span>
+                        <span class="summary-value">
+                            {% set pct = recipe.cost_percentage() %}
+                            {% if pct is not none %}
+                                {{ "%.2f"|format(pct) }}%
+                            {% else %}
+                                --
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions recipe-actions">
+        {% if category_slug and category_slug in ['cocktails', 'mocktails', 'beverages'] %}
+        <a class="btn secondary" href="{{ url_for('recipes.recipe_list', category=category_slug) }}">Back to {{ category_display }}</a>
+        {% else %}
+        <a class="btn secondary" href="{{ url_for('recipes.recipes_list') }}">Back to Recipes</a>
+        {% endif %}
+        <a class="btn" href="{{ url_for('recipes.edit_recipe', id=recipe.id) }}">Edit Recipe</a>
+    </div>
+</div>
+{% endblock %}

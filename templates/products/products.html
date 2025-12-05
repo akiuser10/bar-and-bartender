@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<div class="panel-header">
+    <h2>Product Master List</h2>
+    <a class="btn" href="{{ url_for('products.add_product') }}">+ Add Product</a>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Description</th>
+                <th>Supplier</th>
+                <th>Category</th>
+                <th>Sub-Category</th>
+                <th>Item Level</th>
+                <th>Quantity</th>
+                <th>ABV%</th>
+                <th>Unit</th>
+                <th>Cost/Unit (AED)</th>
+                <th>Case Cost</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for p in products %}
+            <tr>
+                <td>{{ p.barbuddy_code }}</td>
+                <td>{{ p.description }}</td>
+                <td>{{ p.supplier or 'N/A' }}</td>
+                <td>{{ p.category }}</td>
+                <td>{{ p.sub_category }}</td>
+                <td>{{ p.item_level if p.item_level else 'Primary' }}</td>
+                <td>{{ p.ml_in_bottle }}</td>
+                <td>{{ p.abv }}</td>
+                <td>{{ p.selling_unit }}</td>
+                <td>{{ "%.2f"|format(p.cost_per_unit) }}</td>
+                <td>{{ "%.2f"|format(p.calculate_case_cost()) }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

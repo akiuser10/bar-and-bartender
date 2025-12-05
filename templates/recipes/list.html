@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<div class="panel-header">
+    <h2>Recipes</h2>
+</div>
+
+<div class="recipe-category-buttons">
+    <a class="btn btn-category" href="{{ url_for('recipes.add_recipe', category='cocktails') }}">
+        🍸 Add Cocktail
+    </a>
+    <a class="btn btn-category" href="{{ url_for('recipes.add_recipe', category='mocktails') }}">
+        🥤 Add Mocktail
+    </a>
+    <a class="btn btn-category" href="{{ url_for('recipes.add_recipe', category='beverages') }}">
+        🍷 Add Beverage
+    </a>
+</div>
+
+<div class="panel-controls">
+    <label for="typeFilter">Filter by Type:</label>
+    <select id="typeFilter" onchange="filterByType()">
+        <option value="">All Types</option>
+        <option value="Food" {% if selected_type == 'Food' %}selected{% endif %}>Food</option>
+        <option value="Beverage" {% if selected_type == 'Beverage' %}selected{% endif %}>Beverage</option>
+    </select>
+    <label for="categoryFilter">Category:</label>
+    <select id="categoryFilter" onchange="filterByCategory()">
+        <option value="">All Categories</option>
+        <option value="cocktails" {% if selected_category == 'cocktails' %}selected{% endif %}>Cocktails</option>
+        <option value="mocktails" {% if selected_category == 'mocktails' %}selected{% endif %}>Mocktails</option>
+        <option value="beverages" {% if selected_category == 'beverages' %}selected{% endif %}>Beverages</option>
+    </select>
+</div>
+
+<div class="table-wrapper">
+<table class="data-table recipes-table">
+    <colgroup>
+        <col class="col-code">
+        <col class="col-name">
+        <col class="col-type">
+        <col class="col-level">
+        <col class="col-cost">
+        <col class="col-selling">
+        <col class="col-percent">
+        <col class="col-actions">
+    </colgroup>
+    <thead>
+        <tr>
+            <th>Recipe Code</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Category</th>
+            <th>Cost Price (AED)</th>
+            <th>Selling Price (AED)</th>
+            <th>Cost % of SP</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for recipe in recipes %}
+        {% set cost_price = recipe.calculate_total_cost() %}
+        {% set selling_price = recipe.selling_price_value() %}
+        {% set cost_percent = recipe.cost_percentage() %}
+        <tr>
+            <td>{{ recipe.recipe_code if recipe.recipe_code else 'N/A' }}</td>
+            <td>{{ recipe.title }}</td>
+            <td>{{ recipe.recipe_type if recipe.recipe_type else (recipe.type if recipe.type else 'N/A') }}</td>
+            <td>
+                {% set cat_key = (recipe.type or recipe.recipe_type or '')|lower %}
+                {% if cat_key in ['cocktails','classic'] %}
+                    Cocktail
+                {% elif cat_key in ['mocktails','signature'] %}
+                    Mocktail
+                {% elif cat_key in ['beverages','beverage'] %}
+                    Beverage
+                {% else %}
+                    N/A
+                {% endif %}
+            </td>
+            <td>{{ "%.2f"|format(cost_price) }}</td>
+            <td>{{ "%.2f"|format(selling_price) }}</td>
+            <td>{{ cost_percent is not none and ("%.2f"|format(cost_percent) ~ '%') or '--' }}</td>
+            <td class="actions-cell">
+                <a class="link-action" href="{{ url_for('recipes.edit_recipe', id=recipe.id) }}">Edit</a>
+                <form method="POST" action="{{ url_for('recipes.delete_recipe', id=recipe.id) }}" onsubmit="return confirm('Delete this recipe?');" class="inline-form">
+                    <button type="submit" class="link-action">Delete</button>
+                </form>
+                {% if recipe.recipe_code %}
+                <a class="link-action" href="{{ url_for('recipes.view_recipe_by_code', code=recipe.recipe_code) }}">View</a>
+                {% else %}
+                <a class="link-action" href="{{ url_for('recipes.view_recipe', id=recipe.id) }}">View</a>
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<script>
+function filterByType() {
+    const url = new URL(window.location.href);
+    const type = document.getElementById('typeFilter').value;
+    if (type) {
+        url.searchParams.set('type', type);
+    } else {
+        url.searchParams.delete('type');
+    }
+    window.location.href = url.toString();
+}
+
+function filterByLevel() {
+    const url = new URL(window.location.href);
+    const level = document.getElementById('levelFilter').value;
+    if (level) {
+        url.searchParams.set('level', level);
+    } else {
+        url.searchParams.delete('level');
+    }
+    window.location.href = url.toString();
+}
+
+function filterByCategory() {
+    const url = new URL(window.location.href);
+    const cat = document.getElementById('categoryFilter').value;
+    if (cat) {
+        url.searchParams.set('category', cat);
+    } else {
+        url.searchParams.delete('category');
+    }
+    window.location.href = url.toString();
+}
+</script>
+{% endblock %}
+

@@ -1,0 +1,692 @@
+"""
+Recipes Blueprint
+Handles all recipe routes
+"""
+from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app
+from flask_login import login_required, current_user
+from extensions import db
+from models import Product, HomemadeIngredient, Recipe, RecipeIngredient
+from utils.db_helpers import ensure_schema_updates
+from utils.file_upload import save_uploaded_file
+from utils.constants import resolve_recipe_category, category_context_from_type, CATEGORY_CONFIG
+
+recipes_bp = Blueprint('recipes', __name__)
+
+
+@recipes_bp.route('/recipes', methods=['GET'])
+@login_required
+def recipes_list():
+    ensure_schema_updates()
+    try:
+        from sqlalchemy.orm import joinedload
+        # Eagerly load ingredients to avoid N+1 queries and ensure cost calculation works
+        recipes = Recipe.query.options(
+            joinedload(Recipe.ingredients)
+        ).all()
+        
+        recipe_type_filter = request.args.get('type', '')
+        category_filter = (request.args.get('category', '') or '').lower()
+        
+        if recipe_type_filter:
+            recipes = [r for r in recipes if r.recipe_type == recipe_type_filter]
+        if category_filter:
+            # Map category slug to db_labels from CATEGORY_CONFIG
+            from utils.constants import resolve_recipe_category
+            canonical, config = resolve_recipe_category(category_filter)
+            if canonical and config:
+                labels = set(config['db_labels'])
+                # Prioritize type field over recipe_type since recipe_type is generic ('Beverage')
+                # and type field has specific values ('Beverages', 'Mocktails', 'Cocktails')
+                def matches_category(recipe):
+                    # First check type field (most specific)
+                    if recipe.type and recipe.type in labels:
+                        return True
+                    # Only check recipe_type if type is None or empty
+                    if not recipe.type and recipe.recipe_type and recipe.recipe_type in labels:
+                        return True
+                    return False
+                recipes = [r for r in recipes if matches_category(r)]
+        
+        # Ensure ingredients are loaded for cost calculation
+        for recipe in recipes:
+            _ = recipe.ingredients
+            for ingredient in recipe.ingredients:
+                _ = ingredient.get_product()
+        
+        return render_template('recipes/list.html', recipes=recipes, selected_type=recipe_type_filter, selected_category=category_filter)
+    except Exception as e:
+        current_app.logger.error(f"Error in recipes_list: {str(e)}", exc_info=True)
+        flash('An error occurred while loading recipes.', 'error')
+        return render_template('recipes/list.html', recipes=[], selected_type='', selected_category='')
+
+
+@recipes_bp.route('/recipes/<category>', methods=['GET'])
+@login_required
+def recipe_list(category):
+    try:
+        # Check if this is actually a recipe code (starts with 'REC-')
+        # If so, redirect to the recipe code handler
+        if category.startswith('REC-'):
+            return view_recipe_by_code(category)
+        
+        canonical, config = resolve_recipe_category(category)
+        if not canonical:
+            # If category is invalid, redirect to recipes list instead of showing error
+            flash(f"Category '{category}' not found. Showing all recipes.")
+            return redirect(url_for('recipes.recipes_list'))
+
+        from sqlalchemy.orm import joinedload
+        from sqlalchemy import or_, and_
+        # Prioritize type field over recipe_type since recipe_type is generic ('Beverage')
+        # and type field has specific values ('Beverages', 'Mocktails', 'Cocktails')
+        recipes = Recipe.query.options(
+            joinedload(Recipe.ingredients)
+        ).filter(
+            or_(
+                Recipe.type.in_(config['db_labels']),
+                and_(
+                    or_(Recipe.type.is_(None), Recipe.type == ''),
+                    Recipe.recipe_type.in_(config['db_labels'])
+                )
+            )
+        ).all()
+        
+        # Ensure ingredients are loaded for cost calculation
+        for recipe in recipes:
+            _ = recipe.ingredients
+            for ingredient in recipe.ingredients:
+                _ = ingredient.get_product()
+        
+        return render_template(
+            config['template'],
+            recipes=recipes,
+            category=config['display'],
+            category_slug=canonical,
+            add_label=config['add_label']
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error in recipe_list: {str(e)}", exc_info=True)
+        flash('An error occurred while loading recipes.', 'error')
+        return redirect(url_for('recipes.recipes_list'))
+
+
+@recipes_bp.route('/recipes/<code>')
+@login_required
+def view_recipe_by_code(code):
+    try:
+        # First check if it looks like a recipe code (starts with REC-)
+        # This should take priority over category matching
+        if code.startswith('REC-'):
+            from sqlalchemy.orm import joinedload
+            # First check if this is a valid recipe code
+            recipe = Recipe.query.filter_by(recipe_code=code).first()
+            if recipe:
+                # Reload with eager loading
+                recipe = Recipe.query.options(
+                    joinedload(Recipe.ingredients)
+                ).filter_by(recipe_code=code).first()
+                
+                if not recipe:
+                    # Recipe code exists but query failed
+                    flash("Recipe not found")
+                    return redirect(url_for('recipes.recipes_list'))
+                
+                # Ensure ingredients are loaded
+                _ = recipe.ingredients
+                for ingredient in recipe.ingredients:
+                    try:
+                        _ = ingredient.get_product()
+                    except Exception as e:
+                        current_app.logger.warning(f"Error loading product for ingredient {ingredient.id}: {str(e)}")
+                        continue
+                
+                try:
+                    batch = recipe.batch_summary()
+                except Exception as e:
+                    current_app.logger.warning(f"Error in batch_summary for recipe {recipe.id}: {str(e)}")
+                    batch = {}
+                
+                category_slug, category_display = category_context_from_type(recipe.type or recipe.recipe_type or '')
+                # Ensure category_slug is always valid
+                if not category_slug or category_slug not in ['cocktails', 'mocktails', 'beverages']:
+                    category_slug = 'cocktails'
+                    category_display = 'Cocktails'
+                # Double-check that category_slug is valid before rendering
+                canonical_check, _ = resolve_recipe_category(category_slug)
+                if not canonical_check:
+                    category_slug = 'cocktails'
+                    category_display = 'Cocktails'
+                return render_template('recipes/view.html', recipe=recipe, batch=batch, category_slug=category_slug, category_display=category_display)
+            else:
+                # Recipe code not found
+                flash("Recipe not found")
+                return redirect(url_for('recipes.recipes_list'))
+        
+        # If not a recipe code, check if it's a category name
+        canonical, config = resolve_recipe_category(code)
+        if canonical:
+            # This is a category, not a recipe code - call the category handler directly
+            return recipe_list(canonical)
+        
+        # Not a recipe code and not a category
+        flash("Recipe or category not found")
+        return redirect(url_for('recipes.recipes_list'))
+    except Exception as e:
+        current_app.logger.error(f"Error in view_recipe_by_code: {str(e)}", exc_info=True)
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        flash(f'An error occurred while loading the recipe: {str(e)}', 'error')
+        return redirect(url_for('recipes.recipes_list'))
+
+
+@recipes_bp.route('/recipe/add/<category>', methods=['GET', 'POST'])
+@login_required
+def add_recipe(category):
+    try:
+        canonical, config = resolve_recipe_category(category)
+        if not canonical:
+            flash("Invalid recipe category")
+            return redirect(url_for('main.index'))
+
+        products = Product.query.order_by(Product.description).all()
+        secondary_ingredients = HomemadeIngredient.query.order_by(HomemadeIngredient.name).all()
+        ingredient_options = []
+        for p in products:
+            description = p.description or ''
+            code = p.barbuddy_code or ''
+            label = f"{description} ({code})" if code else description
+            ingredient_options.append({
+                'label': label,
+                'description': description,
+                'code': code,
+                'id': p.id,
+                'type': 'Product',
+                'unit': p.selling_unit or 'ml',
+                'cost_per_unit': p.cost_per_unit or 0.0,
+                'container_volume': p.ml_in_bottle or (1 if (p.selling_unit or '').lower() == 'ml' else 0)
+            })
+        ingredient_options.extend([
+            {
+                'label': f"{sec.name} ({sec.unique_code})",
+                'description': sec.name,
+                'code': sec.unique_code or '',
+                'id': sec.id,
+                'type': 'Secondary',
+                'unit': sec.unit or 'ml',
+                'cost_per_unit': sec.calculate_cost_per_unit(),
+                'container_volume': 1
+            }
+            for sec in secondary_ingredients
+            if sec.unique_code
+        ])
+
+        if request.method == 'POST':
+            try:
+                title = request.form.get('title', '').strip()
+                if not title:
+                    flash('Recipe name is required.')
+                    return redirect(url_for('recipes.add_recipe', category=canonical))
+                
+                method = request.form.get('method', '')
+                garnish = request.form.get('garnish', '')
+                item_level = request.form.get('item_level', 'Primary')
+                selling_price = float(request.form.get('selling_price', 0) or 0)
+                vat_percentage = float(request.form.get('vat_percentage', 0) or 0)
+                service_charge_percentage = float(request.form.get('service_charge_percentage', 0) or 0)
+                government_fees_percentage = float(request.form.get('government_fees_percentage', 0) or 0)
+                
+                # Generate unique recipe code
+                max_attempts = 100
+                recipe_code = None
+                for attempt in range(max_attempts):
+                    candidate_code = f"REC-{Recipe.query.count() + attempt + 1:04d}"
+                    existing = Recipe.query.filter_by(recipe_code=candidate_code).first()
+                    if not existing:
+                        recipe_code = candidate_code
+                        break
+                
+                if not recipe_code:
+                    # Fallback to timestamp-based code
+                    from datetime import datetime
+                    recipe_code = f"REC-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+                image_path = None
+                if 'image' in request.files:
+                    file = request.files['image']
+                    if file and file.filename:
+                        try:
+                            image_path = save_uploaded_file(file, 'recipes')
+                        except Exception as e:
+                            current_app.logger.warning(f"Error saving image: {str(e)}")
+                            # Continue without image if upload fails
+
+                recipe = Recipe(
+                    recipe_code=recipe_code,
+                    title=title,
+                    method=method,
+                    garnish=garnish,
+                    recipe_type='Beverage',
+                    type=config['db_labels'][0],
+                    item_level=item_level,
+                    user_id=current_user.id,
+                    image_path=image_path,
+                    selling_price=selling_price,
+                    vat_percentage=vat_percentage,
+                    service_charge_percentage=service_charge_percentage,
+                    government_fees_percentage=government_fees_percentage
+                )
+                db.session.add(recipe)
+                db.session.flush()
+
+                # Parse ingredients from form data
+                # The form sends: ingredient_id[], ingredient_type[], ingredient_qty[], ingredient_unit[]
+                ingredient_ids = request.form.getlist('ingredient_id')
+                ingredient_types = request.form.getlist('ingredient_type')
+                ingredient_qtys = request.form.getlist('ingredient_qty')
+                ingredient_units = request.form.getlist('ingredient_unit')
+                
+                current_app.logger.debug(f"Received {len(ingredient_ids)} ingredient IDs")
+                current_app.logger.debug(f"Ingredient IDs: {ingredient_ids}")
+                current_app.logger.debug(f"Ingredient types: {ingredient_types}")
+                current_app.logger.debug(f"Ingredient qtys: {ingredient_qtys}")
+                
+                items_added = 0
+                for idx, ing_id in enumerate(ingredient_ids):
+                    if not ing_id or not str(ing_id).strip():
+                        current_app.logger.debug(f"Skipping empty ingredient ID at index {idx}")
+                        continue
+                    
+                    try:
+                        ing_type = ingredient_types[idx] if idx < len(ingredient_types) else ''
+                        qty_str = ingredient_qtys[idx] if idx < len(ingredient_qtys) else '0'
+                        unit = ingredient_units[idx] if idx < len(ingredient_units) else 'ml'
+                        
+                        if not qty_str or not str(qty_str).strip():
+                            current_app.logger.debug(f"Skipping ingredient {idx} - no quantity")
+                            continue
+                        
+                        try:
+                            qty = float(qty_str)
+                        except (ValueError, TypeError):
+                            current_app.logger.warning(f"Invalid quantity '{qty_str}' for ingredient {idx}")
+                            continue
+                        
+                        if qty <= 0:
+                            current_app.logger.debug(f"Skipping ingredient {idx} - quantity {qty} <= 0")
+                            continue
+                        
+                        try:
+                            ing_id_int = int(ing_id)
+                        except (ValueError, TypeError):
+                            current_app.logger.warning(f"Invalid ingredient ID '{ing_id}' at index {idx}")
+                            continue
+                        
+                        # Determine ingredient_type for RecipeIngredient
+                        db_ingredient_type = None
+                        db_product_type = None
+                        db_product_id = None
+                        if ing_type == 'Product':
+                            db_ingredient_type = 'Product'
+                            db_product_type = 'Product'
+                            db_product_id = ing_id_int
+                        elif ing_type == 'Secondary':
+                            db_ingredient_type = 'Homemade'
+                            db_product_type = 'Homemade'
+                            db_product_id = ing_id_int
+                        else:
+                            # Try to determine from ID
+                            if Product.query.get(ing_id_int):
+                                db_ingredient_type = 'Product'
+                                db_product_type = 'Product'
+                                db_product_id = ing_id_int
+                            elif HomemadeIngredient.query.get(ing_id_int):
+                                db_ingredient_type = 'Homemade'
+                                db_product_type = 'Homemade'
+                                db_product_id = ing_id_int
+                            else:
+                                current_app.logger.warning(f"Unknown ingredient type for ID {ing_id_int}, type was '{ing_type}'")
+                                continue
+                        
+                        if not db_ingredient_type:
+                            current_app.logger.warning(f"Could not determine ingredient type for ID {ing_id_int}")
+                            continue
+                        
+                        # Calculate quantity_ml - ensure it's never None
+                        quantity_ml = float(qty)  # Default to qty
+                        if unit and unit != 'ml':
+                            # Try to convert if we have the product info
+                            if db_ingredient_type == 'Product':
+                                product = Product.query.get(ing_id_int)
+                                if product and product.ml_in_bottle and product.ml_in_bottle > 0:
+                                    # Assume unit is in bottles/containers
+                                    quantity_ml = qty * product.ml_in_bottle
+                            elif db_ingredient_type == 'Homemade':
+                                # For secondary ingredients, assume ml
+                                quantity_ml = qty
+                        
+                        # Ensure quantity_ml is a valid number
+                        if quantity_ml is None or quantity_ml <= 0:
+                            quantity_ml = qty
+                        
+                        item = RecipeIngredient(
+                            recipe_id=recipe.id,
+                            ingredient_type=db_ingredient_type,
+                            ingredient_id=ing_id_int,
+                            quantity=float(qty),
+                            unit=str(unit) if unit else 'ml',
+                            quantity_ml=float(quantity_ml),
+                            product_type=db_product_type or db_ingredient_type,
+                            product_id=db_product_id or ing_id_int
+                        )
+                        db.session.add(item)
+                        items_added += 1
+                        current_app.logger.debug(f"Added ingredient {idx}: type={db_ingredient_type}, id={ing_id_int}, qty={qty}, unit={unit}")
+                    except (ValueError, TypeError) as e:
+                        current_app.logger.warning(f"Error processing ingredient {idx}: {str(e)}", exc_info=True)
+                        continue
+                    except Exception as e:
+                        current_app.logger.error(f"Unexpected error processing ingredient {idx}: {str(e)}", exc_info=True)
+                        continue
+
+                if items_added == 0:
+                    flash('Please add at least one ingredient with a quantity greater than zero.')
+                    db.session.rollback()
+                    return redirect(url_for('recipes.add_recipe', category=canonical))
+
+                db.session.commit()
+                flash(f'{config["add_label"]} recipe added successfully!')
+                return redirect(url_for('recipes.recipe_list', category=canonical))
+            except Exception as e:
+                db.session.rollback()
+                error_msg = str(e)
+                current_app.logger.error(f"Error creating recipe: {error_msg}", exc_info=True)
+                
+                # Provide more specific error messages
+                if 'UNIQUE constraint' in error_msg or 'unique' in error_msg.lower():
+                    flash('A recipe with this code already exists. Please try again.', 'error')
+                elif 'NOT NULL constraint' in error_msg or 'null' in error_msg.lower():
+                    flash('Missing required information. Please ensure all required fields are filled.', 'error')
+                elif 'ingredient' in error_msg.lower():
+                    flash(f'Error with ingredients: {error_msg}. Please check your ingredient selections.', 'error')
+                else:
+                    flash(f'An error occurred while creating the recipe: {error_msg}. Please try again.', 'error')
+                
+                return redirect(url_for('recipes.add_recipe', category=canonical))
+
+        return render_template(
+            'recipes/add_recipe.html',
+            products=products,
+            secondary_ingredients=secondary_ingredients,
+            category=config['display'],
+            add_label=config['add_label'],
+            category_slug=canonical,
+            ingredient_options=ingredient_options,
+            edit_mode=False,
+            recipe=None,
+            preset_rows=[]
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error in add_recipe: {str(e)}", exc_info=True)
+        flash('An error occurred while loading the recipe creation page.', 'error')
+        return redirect(url_for('recipes.recipes_list'))
+
+
+@recipes_bp.route('/recipe/<int:id>')
+@login_required
+def view_recipe(id):
+    try:
+        from sqlalchemy.orm import joinedload
+        recipe = Recipe.query.options(
+            joinedload(Recipe.ingredients)
+        ).get_or_404(id)
+        
+        # Ensure ingredients are loaded
+        _ = recipe.ingredients
+        for ingredient in recipe.ingredients:
+            try:
+                _ = ingredient.get_product()
+            except Exception as e:
+                current_app.logger.warning(f"Error loading product for ingredient {ingredient.id}: {str(e)}")
+                continue
+        
+        try:
+            batch = recipe.batch_summary()
+        except Exception as e:
+            current_app.logger.warning(f"Error in batch_summary for recipe {recipe.id}: {str(e)}")
+            batch = {}
+        
+        category_slug, category_display = category_context_from_type(recipe.type or recipe.recipe_type or '')
+        # Ensure category_slug is always valid
+        if not category_slug or category_slug not in ['cocktails', 'mocktails', 'beverages']:
+            category_slug = 'cocktails'
+            category_display = 'Cocktails'
+        # Double-check that category_slug is valid before rendering
+        canonical_check, _ = resolve_recipe_category(category_slug)
+        if not canonical_check:
+            category_slug = 'cocktails'
+            category_display = 'Cocktails'
+        return render_template('recipes/view.html', recipe=recipe, batch=batch, category_slug=category_slug, category_display=category_display)
+    except Exception as e:
+        current_app.logger.error(f"Error in view_recipe: {str(e)}", exc_info=True)
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        flash(f'An error occurred while loading the recipe: {str(e)}', 'error')
+        return redirect(url_for('recipes.recipes_list'))
+
+
+
+
+@recipes_bp.route('/recipes/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_recipe(id):
+    ensure_schema_updates()
+    try:
+        from sqlalchemy.orm import joinedload
+        recipe = Recipe.query.options(
+            joinedload(Recipe.ingredients)
+        ).get_or_404(id)
+        
+        # Ensure ingredients are loaded
+        _ = recipe.ingredients
+        for ingredient in recipe.ingredients:
+            _ = ingredient.get_product()
+        
+        category_slug, category_display = category_context_from_type(recipe.type or recipe.recipe_type or '')
+        if not category_slug:
+            category_slug = 'cocktails'
+            category_display = 'Cocktails'
+        config = CATEGORY_CONFIG.get(category_slug, CATEGORY_CONFIG['cocktails'])
+        
+        products = Product.query.order_by(Product.description).all()
+        secondary_ingredients = HomemadeIngredient.query.order_by(HomemadeIngredient.name).all()
+        
+        ingredient_options = []
+        for p in products:
+            description = p.description or ''
+            code = p.barbuddy_code or ''
+            label = f"{description} ({code})" if code else description
+            ingredient_options.append({
+                'label': label,
+                'description': description,
+                'code': code,
+                'id': int(p.id),
+                'type': 'Product',
+                'unit': p.selling_unit or 'ml',
+                'cost_per_unit': float(p.cost_per_unit or 0.0),
+                'container_volume': float(p.ml_in_bottle or (1 if (p.selling_unit or '').lower() == 'ml' else 0))
+            })
+        for sec in secondary_ingredients:
+            if sec.unique_code:
+                try:
+                    cost_per_unit = sec.calculate_cost_per_unit()
+                except Exception:
+                    cost_per_unit = 0.0
+                ingredient_options.append({
+                    'label': f"{sec.name} ({sec.unique_code})",
+                    'description': sec.name,
+                    'code': sec.unique_code or '',
+                    'id': int(sec.id),
+                    'type': 'Secondary',
+                    'unit': sec.unit or 'ml',
+                    'cost_per_unit': float(cost_per_unit),
+                    'container_volume': 1.0
+                })
+
+        if request.method == 'POST':
+            try:
+                recipe.title = request.form['title']
+                recipe.item_level = request.form.get('item_level', recipe.item_level or 'Primary')
+                recipe.method = request.form.get('method', '')
+                recipe.garnish = request.form.get('garnish', '')
+                recipe.selling_price = float(request.form.get('selling_price', recipe.selling_price or 0))
+                recipe.vat_percentage = float(request.form.get('vat_percentage', recipe.vat_percentage or 0))
+                recipe.service_charge_percentage = float(request.form.get('service_charge_percentage', recipe.service_charge_percentage or 0))
+                recipe.government_fees_percentage = float(request.form.get('government_fees_percentage', recipe.government_fees_percentage or 0))
+
+                if 'image' in request.files:
+                    file = request.files['image']
+                    if file.filename:
+                        recipe.image_path = save_uploaded_file(file, 'recipes')
+
+                RecipeIngredient.query.filter_by(recipe_id=recipe.id).delete()
+
+                ingredient_ids = request.form.getlist('ingredient_id')
+                ingredient_types = request.form.getlist('ingredient_type')
+                ingredient_quantities = request.form.getlist('ingredient_qty')
+                ingredient_units = request.form.getlist('ingredient_unit')
+
+                for idx, ing_id in enumerate(ingredient_ids):
+                    if not ing_id or idx >= len(ingredient_types) or idx >= len(ingredient_quantities):
+                        continue
+                    
+                    ing_type = (ingredient_types[idx] or '').strip()
+                    try:
+                        ing_id_int = int(ing_id)
+                    except (ValueError, TypeError):
+                        continue
+                    
+                    try:
+                        qty = float(ingredient_quantities[idx] or 0)
+                    except (ValueError, IndexError, TypeError):
+                        qty = 0
+                    
+                    if qty <= 0:
+                        continue
+                    
+                    unit = ingredient_units[idx] if idx < len(ingredient_units) and ingredient_units[idx] else 'ml'
+                    
+                    # Normalize type, and also set product_type/id for NOT NULL schema
+                    if ing_type == 'Secondary':
+                        db_ingredient_type = 'Homemade'
+                    elif ing_type in ['Product', 'Homemade', 'Recipe']:
+                        db_ingredient_type = ing_type
+                    else:
+                        # Best-effort detection
+                        if Product.query.get(ing_id_int):
+                            db_ingredient_type = 'Product'
+                        elif HomemadeIngredient.query.get(ing_id_int):
+                            db_ingredient_type = 'Homemade'
+                        else:
+                            db_ingredient_type = 'Recipe'
+                    
+                    db_product_type = db_ingredient_type
+                    db_product_id = ing_id_int
+                    
+                    # Compute quantity_ml; convert if not ml and product has ml_in_bottle
+                    quantity_ml = qty
+                    if unit and unit != 'ml':
+                        if db_ingredient_type == 'Product':
+                            prod = Product.query.get(ing_id_int)
+                            if prod and prod.ml_in_bottle and prod.ml_in_bottle > 0:
+                                quantity_ml = qty * prod.ml_in_bottle
+                        # For Homemade/Recipe, treat qty as ml/serving
+                    
+                    if quantity_ml is None or quantity_ml <= 0:
+                        quantity_ml = qty
+                    
+                    item = RecipeIngredient(
+                        recipe_id=recipe.id,
+                        ingredient_type=db_ingredient_type,
+                        ingredient_id=ing_id_int,
+                        quantity=qty,
+                        unit=unit,
+                        quantity_ml=float(quantity_ml),
+                        product_type=db_product_type,
+                        product_id=db_product_id
+                    )
+                    db.session.add(item)
+
+                db.session.commit()
+                flash('Recipe updated successfully!')
+                return redirect(url_for('recipes.recipe_list', category=category_slug))
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error updating recipe: {str(e)}", exc_info=True)
+                flash(f'An error occurred while updating the recipe: {str(e)}', 'error')
+                return redirect(url_for('recipes.edit_recipe', id=id))
+
+        preset_rows = []
+        recipe_ingredients = RecipeIngredient.query.filter_by(recipe_id=recipe.id).all()
+        current_app.logger.info(f"Edit recipe {recipe.id}: Found {len(recipe_ingredients)} ingredients")
+        for ingredient in recipe_ingredients:
+            ing_type = ingredient.ingredient_type
+            if ing_type == 'Homemade':
+                ing_type = 'Secondary'
+            
+            label = ''
+            description = ''
+            code = ''
+            if ing_type == 'Product':
+                product = Product.query.get(ingredient.ingredient_id)
+                if product:
+                    description = product.description or ''
+                    code = product.barbuddy_code or ''
+                    label = f"{description} ({code})" if code else description
+            elif ing_type == 'Secondary':
+                sec = HomemadeIngredient.query.get(ingredient.ingredient_id)
+                if sec and sec.unique_code:
+                    description = sec.name or ''
+                    code = sec.unique_code or ''
+                    label = f"{description} ({code})" if code else description
+            elif ing_type == 'Recipe':
+                rec = Recipe.query.get(ingredient.ingredient_id)
+                if rec and rec.recipe_code:
+                    description = rec.title or ''
+                    code = rec.recipe_code or ''
+                    label = f"{description} ({code})" if code else description
+            
+            if label:
+                preset_rows.append({
+                    'label': label,
+                    'description': description,
+                    'code': code,
+                    'id': int(ingredient.ingredient_id),
+                    'type': ing_type,
+                    'qty': float(ingredient.quantity or 0),
+                    'unit': ingredient.unit or 'ml'
+                })
+
+        return render_template('recipes/edit.html',
+                               products=products,
+                               secondary_ingredients=secondary_ingredients,
+                               category=category_display,
+                               add_label=config['add_label'],
+                               category_slug=category_slug,
+                               ingredient_options=ingredient_options,
+                               recipe=recipe,
+                               preset_rows=preset_rows)
+    except Exception as e:
+        current_app.logger.error(f"Error in edit_recipe: {str(e)}", exc_info=True)
+        flash('An error occurred while loading the recipe for editing.', 'error')
+        return redirect(url_for('recipes.recipes_list'))
+
+
+@recipes_bp.route('/recipes/<int:id>/delete', methods=['POST'])
+@login_required
+def delete_recipe(id):
+    recipe = Recipe.query.get_or_404(id)
+    db.session.delete(recipe)
+    db.session.commit()
+    flash('Recipe deleted successfully!')
+    return redirect(url_for('recipes.recipes_list'))
+

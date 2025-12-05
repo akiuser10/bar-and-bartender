@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<h2>Edit Ingredient</h2>
+
+<form method="POST" enctype="multipart/form-data">
+    <div class="table-wrapper">
+    <table class="form-table">
+        <tr>
+            <th id="label-unique-item-edit"><label for="unique_item_number_edit">Unique Item Number</label></th>
+            <td><input type="text" id="unique_item_number_edit" name="unique_item_number" value="{{ product.unique_item_number or '' }}" required title="Unique Item Number" placeholder="ITEM-000001" aria-labelledby="label-unique-item-edit" aria-label="Unique Item Number"></td>
+        </tr>
+        <tr>
+            <th id="label-description-edit"><label for="description_edit">Description</label></th>
+            <td><input type="text" id="description_edit" name="description" value="{{ product.description }}" required placeholder="Product description" title="Description" aria-labelledby="label-description-edit" aria-label="Description"></td>
+        </tr>
+        <tr>
+            <th id="label-supplier-edit"><label for="supplier_edit">Supplier</label></th>
+            <td><input type="text" id="supplier_edit" name="supplier" value="{{ product.supplier or '' }}" placeholder="Supplier Name" title="Supplier" aria-labelledby="label-supplier-edit" aria-label="Supplier"></td>
+        </tr>
+        <tr>
+            <th id="label-category-edit"><label for="category_edit">Category</label></th>
+            <td>
+                <select id="category_edit" name="category" required title="Category" aria-labelledby="label-category-edit" aria-label="Category">
+                    <option value="Beverage" {% if product.category == 'Beverage' %}selected{% endif %}>Beverage</option>
+                    <option value="Food" {% if product.category == 'Food' %}selected{% endif %}>Food</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-item-level-edit"><label for="item_level_edit">Item Level</label></th>
+            <td>
+                <select id="item_level_edit" name="item_level" required title="Item Level" aria-labelledby="label-item-level-edit" aria-label="Item Level">
+                    <option value="Primary" {% if product.item_level == 'Primary' or not product.item_level %}selected{% endif %}>Primary Item</option>
+                    <option value="Secondary" {% if product.item_level == 'Secondary' %}selected{% endif %}>Secondary Item</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-sub-category-edit"><label for="sub_category_edit">Sub-Category</label></th>
+            <td>
+                <select id="sub_category_edit" name="sub_category" required title="Sub-Category" aria-labelledby="label-sub-category-edit" aria-label="Sub-Category">
+                    <option value="Alcohol" {% if product.sub_category == 'Alcohol' %}selected{% endif %}>Alcohol</option>
+                    <option value="Non Alcohol" {% if product.sub_category == 'Non Alcohol' %}selected{% endif %}>Non Alcohol</option>
+                    <option value="Non-Alcohol" {% if product.sub_category == 'Non-Alcohol' %}selected{% endif %}>Non-Alcohol</option>
+                    <option value="Fruits" {% if product.sub_category == 'Fruits' %}selected{% endif %}>Fruits</option>
+                    <option value="Vegetables" {% if product.sub_category == 'Vegetables' %}selected{% endif %}>Vegetables</option>
+                    <option value="Dairy" {% if product.sub_category == 'Dairy' %}selected{% endif %}>Dairy</option>
+                    <option value="Syrups & Purees" {% if product.sub_category == 'Syrups & Purees' %}selected{% endif %}>Syrups & Purees</option>
+                    <option value="Syrup" {% if product.sub_category == 'Syrup' %}selected{% endif %}>Syrup</option>
+                    <option value="Puree" {% if product.sub_category == 'Puree' %}selected{% endif %}>Puree</option>
+                    <option value="Juice" {% if product.sub_category == 'Juice' %}selected{% endif %}>Juice</option>
+                    <option value="Other" {% if product.sub_category == 'Other' %}selected{% endif %}>Other</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-quantity-edit"><label for="ml_in_bottle_edit">Quantity</label></th>
+            <td><input type="number" id="ml_in_bottle_edit" step="0.01" name="ml_in_bottle" value="{{ product.ml_in_bottle or 0 }}" placeholder="0" title="Quantity" aria-labelledby="label-quantity-edit" aria-label="Quantity"></td>
+        </tr>
+        <tr>
+            <th id="label-selling-unit-edit"><label for="selling_unit_edit">Selling Unit</label></th>
+            <td>
+                <select id="selling_unit_edit" name="selling_unit" required title="Selling Unit" aria-labelledby="label-selling-unit-edit" aria-label="Selling Unit">
+                    <option value="ml" {% if product.selling_unit == 'ml' %}selected{% endif %}>ml</option>
+                    <option value="grams" {% if product.selling_unit == 'grams' %}selected{% endif %}>grams</option>
+                    <option value="pieces" {% if product.selling_unit == 'pieces' %}selected{% endif %}>pieces</option>
+                    <option value="cups" {% if product.selling_unit == 'cups' %}selected{% endif %}>cups</option>
+                    <option value="each" {% if product.selling_unit == 'each' %}selected{% endif %}>each</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-cost-per-unit-edit"><label for="cost_per_unit_edit">Cost per Unit (AED)</label></th>
+            <td><input type="number" id="cost_per_unit_edit" step="0.01" name="cost_per_unit" value="{{ product.cost_per_unit }}" required placeholder="0.00" title="Cost per Unit (AED)" aria-labelledby="label-cost-per-unit-edit" aria-label="Cost per Unit (AED)"></td>
+        </tr>
+        <tr>
+            <th id="label-purchase-type-edit"><label for="purchase_type_edit">Purchase Type</label></th>
+            <td>
+                <select id="purchase_type_edit" name="purchase_type" title="Purchase Type" aria-labelledby="label-purchase-type-edit" aria-label="Purchase Type">
+                    <option value="each" {% if product.purchase_type == 'each' %}selected{% endif %}>each</option>
+                    <option value="case" {% if product.purchase_type == 'case' %}selected{% endif %}>case</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th id="label-bottles-per-case-edit"><label for="bottles_per_case_edit">Bottles per Case</label></th>
+            <td><input type="number" id="bottles_per_case_edit" name="bottles_per_case" value="{{ product.bottles_per_case or 1 }}" placeholder="1" title="Bottles per Case" aria-labelledby="label-bottles-per-case-edit" aria-label="Bottles per Case"></td>
+        </tr>
+        <tr>
+            <th id="label-product-image-edit"><label for="image_edit">Product Image</label></th>
+            <td>
+                {% if product.image_path %}
+                <div class="preview">
+                    <img src="{{ url_for('uploaded_file', filename=product.image_path) }}" alt="{{ product.description }}">
+                </div>
+                {% endif %}
+                <input type="file" id="image_edit" name="image" accept="image/*" title="Product Image" placeholder="Select image file" aria-labelledby="label-product-image-edit" aria-label="Product Image">
+                <small>Leave empty to keep current image</small>
+            </td>
+        </tr>
+    </table>
+    </div>
+
+    <div class="actions">
+        <button type="submit" class="btn">Update Ingredient</button>
+        <a href="{{ url_for('products.ingredients_master') }}" class="btn secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
+

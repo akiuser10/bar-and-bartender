@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<div class="panel-header">
+    <h2>Secondary Ingredients</h2>
+    <a class="btn" href="{{ url_for('secondary.add_secondary_ingredient') }}">+ Add Secondary Ingredient</a>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Item Level</th>
+                <th>Unit</th>
+                <th>Cost/Unit (AED)</th>
+                <th>Total Cost (AED)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in secondary_rows %}
+            <tr>
+                <td>{{ row.code }}</td>
+                <td>{{ row.name }}</td>
+                <td>{{ row.item_level }}</td>
+                <td>{{ row.unit }}</td>
+                <td>{{ "%.4f"|format(row.unit_cost) }}</td>
+                <td>AED {{ "%.2f"|format(row.total_cost) }}</td>
+                <td class="actions-cell">
+                    <a class="link-action" href="{{ url_for('secondary.edit_secondary_ingredient', id=row.id) }}">Edit</a>
+                    <form method="POST" action="{{ url_for('secondary.delete_secondary_ingredient', id=row.id) }}" onsubmit="return confirm('Delete this secondary ingredient?');" class="inline-form" style="display:inline">
+                        <button type="submit" class="link-action">Delete</button>
+                    </form>
+                    <a class="link-action" href="{{ url_for('secondary.view_secondary_ingredient', id=row.id) }}">View</a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+

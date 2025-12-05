@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<div class="hero">
+    <h1>Bar & Bartender</h1>
+    <p class="hero-subtitle">Recipe & Costing Management System</p>
+    <div class="hero-cta">
+        <a class="btn" href="{{ url_for('products.ingredients_master') }}">Master List</a>
+        <a class="btn" href="{{ url_for('secondary.secondary_ingredients') }}">Secondary Ingredients</a>
+        <a class="btn" href="{{ url_for('recipes.recipes_list') }}">Recipes</a>
+    </div>
+</div>
+{% endblock %}
