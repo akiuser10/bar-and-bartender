@@ -5,10 +5,21 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'supersecretkey'
     
     # Support both SQLite (development) and PostgreSQL (production) via DATABASE_URL
-    database_url = os.environ.get('DATABASE_URL', 'sqlite:///bar_bartender.db')
+    database_url = os.environ.get('DATABASE_URL', '').strip()
+    
+    # If DATABASE_URL is not set or empty, use SQLite for development
+    if not database_url:
+        database_url = 'sqlite:///bar_bartender.db'
     # Handle PostgreSQL URL format for Render and other platforms
-    if database_url and database_url.startswith('postgres://'):
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    # Convert to use psycopg3 (Python 3.13 compatible)
+    elif database_url.startswith('postgres://'):
+        # Convert postgres:// to postgresql+psycopg://
+        database_url = database_url.replace('postgres://', 'postgresql+psycopg://', 1)
+    elif database_url.startswith('postgresql://'):
+        # If already postgresql:// but not using psycopg, add it
+        if '+psycopg' not in database_url:
+            database_url = database_url.replace('postgresql://', 'postgresql+psycopg://', 1)
+    
     SQLALCHEMY_DATABASE_URI = database_url
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
