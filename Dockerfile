@@ -14,8 +14,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Expose port (Railway sets PORT env var)
-EXPOSE $PORT
+# Expose port (Railway sets PORT env var at runtime)
+EXPOSE 5000
 
 # Run the application
-CMD gunicorn app:app --bind 0.0.0.0:$PORT
+# Use PORT env var if set, otherwise default to 5000
+CMD gunicorn app:app --bind 0.0.0.0:${PORT:-5000}
