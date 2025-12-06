@@ -290,6 +290,53 @@ def ensure_schema_updates():
                                     current_app.logger.info('Created user-scoped unique constraint on (user_id, unique_code) for homemade_ingredient')
                             except Exception as e:
                                 current_app.logger.warning(f'Could not create user-scoped constraint for homemade_ingredient: {str(e)}')
+                        
+                        # Drop old global unique constraint on recipe.recipe_code if it exists
+                        recipe_constraint_check = conn.execute(db.text(
+                            "SELECT 1 FROM information_schema.table_constraints "
+                            "WHERE table_name = 'recipe' AND constraint_name = 'recipe_recipe_code_key' "
+                            "UNION ALL "
+                            "SELECT 1 FROM pg_constraint WHERE conname = 'recipe_recipe_code_key'"
+                        ))
+                        if recipe_constraint_check.fetchone():
+                            try:
+                                conn.execute(db.text("ALTER TABLE recipe DROP CONSTRAINT IF EXISTS recipe_recipe_code_key"))
+                                current_app.logger.info('Dropped old global unique constraint on recipe.recipe_code')
+                            except Exception as drop_e:
+                                current_app.logger.warning(f'Could not drop recipe recipe_code constraint: {str(drop_e)}')
+                        
+                        # Also check for unique indexes on recipe.recipe_code
+                        recipe_index_check = conn.execute(db.text(
+                            "SELECT indexname FROM pg_indexes "
+                            "WHERE tablename = 'recipe' AND indexname = 'recipe_recipe_code_key'"
+                        ))
+                        for row in recipe_index_check:
+                            index_name = row[0]
+                            try:
+                                conn.execute(db.text(f"DROP INDEX IF EXISTS {index_name}"))
+                                current_app.logger.info(f'Dropped old unique index: {index_name}')
+                            except Exception as drop_e:
+                                current_app.logger.warning(f'Could not drop index {index_name}: {str(drop_e)}')
+                        
+                        # Add new user-scoped unique constraint for recipe.recipe_code
+                        recipe_columns = get_table_columns(conn, 'recipe')
+                        if 'user_id' in recipe_columns:
+                            try:
+                                # Check if new constraint for recipe_code already exists
+                                recipe_unique_check = conn.execute(db.text(
+                                    "SELECT indexname FROM pg_indexes "
+                                    "WHERE tablename = 'recipe' AND indexname = 'recipe_user_recipe_code_key'"
+                                ))
+                                if not recipe_unique_check.fetchone():
+                                    # Create unique constraint on (user_id, recipe_code)
+                                    conn.execute(db.text(
+                                        "CREATE UNIQUE INDEX IF NOT EXISTS recipe_user_recipe_code_key "
+                                        "ON recipe (user_id, recipe_code) "
+                                        "WHERE user_id IS NOT NULL AND recipe_code IS NOT NULL"
+                                    ))
+                                    current_app.logger.info('Created user-scoped unique constraint on (user_id, recipe_code) for recipe')
+                            except Exception as e:
+                                current_app.logger.warning(f'Could not create user-scoped constraint for recipe: {str(e)}')
                     except Exception as e:
                         current_app.logger.warning(f'Could not update unique constraints: {str(e)}')
                         # Try to drop constraints directly as fallback
@@ -297,6 +344,7 @@ def ensure_schema_updates():
                             conn.execute(db.text("ALTER TABLE product DROP CONSTRAINT IF EXISTS product_unique_item_number_key"))
                             conn.execute(db.text("ALTER TABLE product DROP CONSTRAINT IF EXISTS product_barbuddy_code_key"))
                             conn.execute(db.text("ALTER TABLE homemade_ingredient DROP CONSTRAINT IF EXISTS homemade_ingredient_unique_code_key"))
+                            conn.execute(db.text("ALTER TABLE recipe DROP CONSTRAINT IF EXISTS recipe_recipe_code_key"))
                             current_app.logger.info('Attempted to drop old constraints as fallback')
                         except Exception:
                             pass

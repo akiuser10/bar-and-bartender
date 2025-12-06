@@ -144,7 +144,7 @@ class HomemadeIngredientItem(db.Model):
 # -------------------------
 class Recipe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    recipe_code = db.Column(db.String(50), unique=True)
+    recipe_code = db.Column(db.String(50))  # Removed unique=True - will be user-scoped via database index
     title = db.Column(db.String(150), nullable=False)
     method = db.Column(db.Text)
     recipe_type = db.Column(db.String(20))
