@@ -161,6 +161,9 @@ def ensure_schema_updates():
                         current_app.logger.warning(f'Could not add user_id to homemade_ingredient: {str(e)}')
                         pass  # Column might already exist
                 
+                # Store homemade_columns for later use in constraint updates
+                homemade_columns_for_constraints = get_table_columns(conn, 'homemade_ingredient')
+                
                 # Drop old global unique constraints and replace with user-scoped constraints
                 db_url = str(db.engine.url)
                 if 'postgresql' in db_url or 'postgres' in db_url:
@@ -209,6 +212,33 @@ def ensure_schema_updates():
                             except Exception as drop_e:
                                 current_app.logger.warning(f'Could not drop index {index_name}: {str(drop_e)}')
                         
+                        # Drop old global unique constraint on homemade_ingredient.unique_code if it exists
+                        homemade_constraint_check = conn.execute(db.text(
+                            "SELECT 1 FROM information_schema.table_constraints "
+                            "WHERE table_name = 'homemade_ingredient' AND constraint_name = 'homemade_ingredient_unique_code_key' "
+                            "UNION ALL "
+                            "SELECT 1 FROM pg_constraint WHERE conname = 'homemade_ingredient_unique_code_key'"
+                        ))
+                        if homemade_constraint_check.fetchone():
+                            try:
+                                conn.execute(db.text("ALTER TABLE homemade_ingredient DROP CONSTRAINT IF EXISTS homemade_ingredient_unique_code_key"))
+                                current_app.logger.info('Dropped old global unique constraint on homemade_ingredient.unique_code')
+                            except Exception as drop_e:
+                                current_app.logger.warning(f'Could not drop homemade_ingredient unique_code constraint: {str(drop_e)}')
+                        
+                        # Also check for unique indexes on homemade_ingredient.unique_code
+                        homemade_index_check = conn.execute(db.text(
+                            "SELECT indexname FROM pg_indexes "
+                            "WHERE tablename = 'homemade_ingredient' AND indexname = 'homemade_ingredient_unique_code_key'"
+                        ))
+                        for row in homemade_index_check:
+                            index_name = row[0]
+                            try:
+                                conn.execute(db.text(f"DROP INDEX IF EXISTS {index_name}"))
+                                current_app.logger.info(f'Dropped old unique index: {index_name}')
+                            except Exception as drop_e:
+                                current_app.logger.warning(f'Could not drop index {index_name}: {str(drop_e)}')
+                        
                         # Add new user-scoped unique constraints (only if user_id column exists)
                         if 'user_id' in product_columns:
                             try:
@@ -241,12 +271,32 @@ def ensure_schema_updates():
                                     current_app.logger.info('Created user-scoped unique constraint on (user_id, barbuddy_code)')
                             except Exception as e:
                                 current_app.logger.warning(f'Could not create user-scoped constraints: {str(e)}')
+                        
+                        # Add new user-scoped unique constraint for homemade_ingredient.unique_code
+                        if 'user_id' in homemade_columns_for_constraints:
+                            try:
+                                # Check if new constraint for unique_code already exists
+                                homemade_unique_check = conn.execute(db.text(
+                                    "SELECT indexname FROM pg_indexes "
+                                    "WHERE tablename = 'homemade_ingredient' AND indexname = 'homemade_ingredient_user_unique_code_key'"
+                                ))
+                                if not homemade_unique_check.fetchone():
+                                    # Create unique constraint on (user_id, unique_code)
+                                    conn.execute(db.text(
+                                        "CREATE UNIQUE INDEX IF NOT EXISTS homemade_ingredient_user_unique_code_key "
+                                        "ON homemade_ingredient (user_id, unique_code) "
+                                        "WHERE user_id IS NOT NULL AND unique_code IS NOT NULL"
+                                    ))
+                                    current_app.logger.info('Created user-scoped unique constraint on (user_id, unique_code) for homemade_ingredient')
+                            except Exception as e:
+                                current_app.logger.warning(f'Could not create user-scoped constraint for homemade_ingredient: {str(e)}')
                     except Exception as e:
                         current_app.logger.warning(f'Could not update unique constraints: {str(e)}')
                         # Try to drop constraints directly as fallback
                         try:
                             conn.execute(db.text("ALTER TABLE product DROP CONSTRAINT IF EXISTS product_unique_item_number_key"))
                             conn.execute(db.text("ALTER TABLE product DROP CONSTRAINT IF EXISTS product_barbuddy_code_key"))
+                            conn.execute(db.text("ALTER TABLE homemade_ingredient DROP CONSTRAINT IF EXISTS homemade_ingredient_unique_code_key"))
                             current_app.logger.info('Attempted to drop old constraints as fallback')
                         except Exception:
                             pass
