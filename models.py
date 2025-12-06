@@ -141,10 +141,9 @@ class HomemadeIngredientItem(db.Model):
             import logging
             logging.warning(f"Error accessing product for HomemadeIngredientItem {self.id}: {str(e)}")
             return 0.0
-        
-        try:
 
-        # Calculate cost per unit based on product's selling unit
+        try:
+            # Calculate cost per unit based on product's selling unit
         if prod.selling_unit == "ml":
             # For ml, cost_per_unit is already per ml
             cost_per_unit = prod.cost_per_unit
@@ -164,9 +163,13 @@ class HomemadeIngredientItem(db.Model):
                 # Fallback to cost_per_unit as-is
                 cost_per_unit = prod.cost_per_unit
 
-        # Calculate total cost: cost per unit * quantity
-        total_cost = cost_per_unit * qty
-        return round(total_cost, 2)
+            # Calculate total cost: cost per unit * quantity
+            total_cost = cost_per_unit * qty
+            return round(total_cost, 2)
+        except Exception as e:
+            import logging
+            logging.warning(f"Error calculating cost for HomemadeIngredientItem {self.id}: {str(e)}")
+            return 0.0
 
 # -------------------------
 # RECIPE MODEL
