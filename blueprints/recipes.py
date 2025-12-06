@@ -199,12 +199,40 @@ def add_recipe(category):
             flash("Invalid recipe category")
             return redirect(url_for('main.index'))
 
-        products = Product.query.order_by(Product.description).all()
-        secondary_ingredients = HomemadeIngredient.query.order_by(HomemadeIngredient.name).all()
+        # Filter products and secondary ingredients by current user
+        from utils.db_helpers import has_column
+        try:
+            if has_column('product', 'user_id'):
+                products = Product.query.filter(Product.user_id == current_user.id).order_by(Product.description).all()
+            else:
+                products = Product.query.order_by(Product.description).all()
+        except Exception:
+            products = Product.query.order_by(Product.description).all()
+        
+        try:
+            if has_column('homemade_ingredient', 'user_id'):
+                secondary_ingredients = HomemadeIngredient.query.filter(HomemadeIngredient.user_id == current_user.id).order_by(HomemadeIngredient.name).all()
+            else:
+                secondary_ingredients = HomemadeIngredient.query.order_by(HomemadeIngredient.name).all()
+        except Exception:
+            secondary_ingredients = HomemadeIngredient.query.order_by(HomemadeIngredient.name).all()
+        
+        # Build ingredient options list, ensuring no duplicates
         ingredient_options = []
+        seen_products = set()  # Track products by (description, code) to avoid duplicates
+        
         for p in products:
             description = p.description or ''
             code = p.barbuddy_code or ''
+            # Use a unique key to detect duplicates
+            product_key = (description.lower().strip(), code.lower().strip())
+            
+            # Skip if we've already added this product
+            if product_key in seen_products:
+                current_app.logger.warning(f'Skipping duplicate product: {description} ({code})')
+                continue
+            
+            seen_products.add(product_key)
             label = f"{description} ({code})" if code else description
             ingredient_options.append({
                 'label': label,
@@ -216,20 +244,37 @@ def add_recipe(category):
                 'cost_per_unit': p.cost_per_unit or 0.0,
                 'container_volume': p.ml_in_bottle or (1 if (p.selling_unit or '').lower() == 'ml' else 0)
             })
-        ingredient_options.extend([
-            {
+        
+        # Add secondary ingredients, also checking for duplicates
+        seen_secondary = set()
+        for sec in secondary_ingredients:
+            if not sec.unique_code:
+                continue
+            
+            # Use a unique key to detect duplicates
+            secondary_key = (sec.name.lower().strip() if sec.name else '', sec.unique_code.lower().strip())
+            
+            # Skip if we've already added this secondary ingredient
+            if secondary_key in seen_secondary:
+                current_app.logger.warning(f'Skipping duplicate secondary ingredient: {sec.name} ({sec.unique_code})')
+                continue
+            
+            seen_secondary.add(secondary_key)
+            try:
+                cost_per_unit = sec.calculate_cost_per_unit()
+            except Exception:
+                cost_per_unit = 0.0
+            
+            ingredient_options.append({
                 'label': f"{sec.name} ({sec.unique_code})",
                 'description': sec.name,
                 'code': sec.unique_code or '',
                 'id': sec.id,
                 'type': 'Secondary',
                 'unit': sec.unit or 'ml',
-                'cost_per_unit': sec.calculate_cost_per_unit(),
-                'container_volume': 1
-            }
-            for sec in secondary_ingredients
-            if sec.unique_code
-        ])
+                'cost_per_unit': cost_per_unit,
+                'container_volume': sec.total_volume_ml or 1
+            })
 
         if request.method == 'POST':
             try:
@@ -509,13 +554,40 @@ def edit_recipe(id):
             category_display = 'Cocktails'
         config = CATEGORY_CONFIG.get(category_slug, CATEGORY_CONFIG['cocktails'])
         
-        products = Product.query.order_by(Product.description).all()
-        secondary_ingredients = HomemadeIngredient.query.order_by(HomemadeIngredient.name).all()
+        # Filter products and secondary ingredients by current user
+        from utils.db_helpers import has_column
+        try:
+            if has_column('product', 'user_id'):
+                products = Product.query.filter(Product.user_id == current_user.id).order_by(Product.description).all()
+            else:
+                products = Product.query.order_by(Product.description).all()
+        except Exception:
+            products = Product.query.order_by(Product.description).all()
         
+        try:
+            if has_column('homemade_ingredient', 'user_id'):
+                secondary_ingredients = HomemadeIngredient.query.filter(HomemadeIngredient.user_id == current_user.id).order_by(HomemadeIngredient.name).all()
+            else:
+                secondary_ingredients = HomemadeIngredient.query.order_by(HomemadeIngredient.name).all()
+        except Exception:
+            secondary_ingredients = HomemadeIngredient.query.order_by(HomemadeIngredient.name).all()
+        
+        # Build ingredient options list, ensuring no duplicates
         ingredient_options = []
+        seen_products = set()  # Track products by (description, code) to avoid duplicates
+        
         for p in products:
             description = p.description or ''
             code = p.barbuddy_code or ''
+            # Use a unique key to detect duplicates
+            product_key = (description.lower().strip(), code.lower().strip())
+            
+            # Skip if we've already added this product
+            if product_key in seen_products:
+                current_app.logger.warning(f'Skipping duplicate product: {description} ({code})')
+                continue
+            
+            seen_products.add(product_key)
             label = f"{description} ({code})" if code else description
             ingredient_options.append({
                 'label': label,
@@ -527,22 +599,37 @@ def edit_recipe(id):
                 'cost_per_unit': float(p.cost_per_unit or 0.0),
                 'container_volume': float(p.ml_in_bottle or (1 if (p.selling_unit or '').lower() == 'ml' else 0))
             })
+        
+        # Add secondary ingredients, also checking for duplicates
+        seen_secondary = set()
         for sec in secondary_ingredients:
-            if sec.unique_code:
-                try:
-                    cost_per_unit = sec.calculate_cost_per_unit()
-                except Exception:
-                    cost_per_unit = 0.0
-                ingredient_options.append({
-                    'label': f"{sec.name} ({sec.unique_code})",
-                    'description': sec.name,
-                    'code': sec.unique_code or '',
-                    'id': int(sec.id),
-                    'type': 'Secondary',
-                    'unit': sec.unit or 'ml',
-                    'cost_per_unit': float(cost_per_unit),
-                    'container_volume': 1.0
-                })
+            if not sec.unique_code:
+                continue
+            
+            # Use a unique key to detect duplicates
+            secondary_key = (sec.name.lower().strip() if sec.name else '', sec.unique_code.lower().strip())
+            
+            # Skip if we've already added this secondary ingredient
+            if secondary_key in seen_secondary:
+                current_app.logger.warning(f'Skipping duplicate secondary ingredient: {sec.name} ({sec.unique_code})')
+                continue
+            
+            seen_secondary.add(secondary_key)
+            try:
+                cost_per_unit = sec.calculate_cost_per_unit()
+            except Exception:
+                cost_per_unit = 0.0
+            
+            ingredient_options.append({
+                'label': f"{sec.name} ({sec.unique_code})",
+                'description': sec.name,
+                'code': sec.unique_code or '',
+                'id': int(sec.id),
+                'type': 'Secondary',
+                'unit': sec.unit or 'ml',
+                'cost_per_unit': float(cost_per_unit),
+                'container_volume': float(sec.total_volume_ml or 1.0)
+            })
 
         if request.method == 'POST':
             try:
