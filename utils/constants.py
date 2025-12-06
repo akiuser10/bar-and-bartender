@@ -19,6 +19,12 @@ CATEGORY_CONFIG = {
         'db_labels': ['Beverages', 'Beverage'],
         'template': 'recipes/recipes_beverages.html',
         'add_label': 'Beverage'
+    },
+    'food': {
+        'display': 'Food',
+        'db_labels': ['Food'],
+        'template': 'recipes/add_recipe.html',
+        'add_label': 'Food'
     }
 }
 
@@ -28,7 +34,8 @@ CATEGORY_ALIASES = {
     'mocktails': 'mocktails',
     'signature': 'mocktails',
     'beverages': 'beverages',
-    'beverage': 'beverages'
+    'beverage': 'beverages',
+    'food': 'food'
 }
 
 TYPE_TO_CATEGORY = {
@@ -38,7 +45,7 @@ TYPE_TO_CATEGORY = {
     'signature': 'mocktails',
     'beverages': 'beverages',
     'beverage': 'beverages',
-    'food': 'cocktails',  # Default Food to Cocktails category
+    'food': 'food',
     '': 'cocktails'  # Default empty type to Cocktails
 }
 

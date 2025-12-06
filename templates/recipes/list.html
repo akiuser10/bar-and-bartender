@@ -14,6 +14,9 @@
     <a class="btn btn-category" href="{{ url_for('recipes.add_recipe', category='beverages') }}">
         🍷 Add Beverage
     </a>
+    <a class="btn btn-category" href="{{ url_for('recipes.add_recipe', category='food') }}">
+        🍽️ Add Food
+    </a>
 </div>
 
 <div class="panel-controls">
@@ -29,6 +32,7 @@
         <option value="cocktails" {% if selected_category == 'cocktails' %}selected{% endif %}>Cocktails</option>
         <option value="mocktails" {% if selected_category == 'mocktails' %}selected{% endif %}>Mocktails</option>
         <option value="beverages" {% if selected_category == 'beverages' %}selected{% endif %}>Beverages</option>
+        <option value="food" {% if selected_category == 'food' %}selected{% endif %}>Food</option>
     </select>
 </div>
 
@@ -73,6 +77,8 @@
                     Mocktail
                 {% elif cat_key in ['beverages','beverage'] %}
                     Beverage
+                {% elif cat_key in ['food'] %}
+                    Food
                 {% else %}
                     N/A
                 {% endif %}
