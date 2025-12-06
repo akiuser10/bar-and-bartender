@@ -171,7 +171,7 @@
 
         <div class="actions recipe-actions">
         <button type="submit" class="btn">{% if edit_mode %}Update Recipe{% else %}Save Recipe{% endif %}</button>
-            <a href="{{ url_for('recipes.recipe_list', category=category_slug) }}" class="btn secondary">Cancel</a>
+            <a href="{{ url_for('recipes.recipes_list') }}" class="btn secondary">Cancel</a>
     </div>
 </form>
 </div>
