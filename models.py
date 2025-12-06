@@ -137,31 +137,26 @@ class HomemadeIngredientItem(db.Model):
             # If cost_per_unit is None or 0, return 0
             if prod.cost_per_unit is None or prod.cost_per_unit == 0:
                 return 0.0
-        except Exception as e:
-            import logging
-            logging.warning(f"Error accessing product for HomemadeIngredientItem {self.id}: {str(e)}")
-            return 0.0
 
-        try:
             # Calculate cost per unit based on product's selling unit
-        if prod.selling_unit == "ml":
-            # For ml, cost_per_unit is already per ml
-            cost_per_unit = prod.cost_per_unit
-        elif prod.selling_unit == "grams":
-            # For grams, cost_per_unit is per gram
-            cost_per_unit = prod.cost_per_unit
-        elif prod.selling_unit == "pieces":
-            # For pieces, cost_per_unit is per piece
-            cost_per_unit = prod.cost_per_unit
-        else:
-            # For other units or if ml_in_bottle is set, calculate per ml
-            if prod.ml_in_bottle and prod.ml_in_bottle > 0:
-                # cost_per_unit is typically the cost of the whole bottle
-                # So cost per ml = cost_per_unit / ml_in_bottle
-                cost_per_unit = prod.cost_per_unit / prod.ml_in_bottle
-            else:
-                # Fallback to cost_per_unit as-is
+            if prod.selling_unit == "ml":
+                # For ml, cost_per_unit is already per ml
                 cost_per_unit = prod.cost_per_unit
+            elif prod.selling_unit == "grams":
+                # For grams, cost_per_unit is per gram
+                cost_per_unit = prod.cost_per_unit
+            elif prod.selling_unit == "pieces":
+                # For pieces, cost_per_unit is per piece
+                cost_per_unit = prod.cost_per_unit
+            else:
+                # For other units or if ml_in_bottle is set, calculate per ml
+                if prod.ml_in_bottle and prod.ml_in_bottle > 0:
+                    # cost_per_unit is typically the cost of the whole bottle
+                    # So cost per ml = cost_per_unit / ml_in_bottle
+                    cost_per_unit = prod.cost_per_unit / prod.ml_in_bottle
+                else:
+                    # Fallback to cost_per_unit as-is
+                    cost_per_unit = prod.cost_per_unit
 
             # Calculate total cost: cost per unit * quantity
             total_cost = cost_per_unit * qty
