@@ -72,7 +72,7 @@
                     </div>
                     <div class="summary-row cost-percent-row">
                         <span class="summary-label">COST PER UNIT:</span>
-                        <span class="summary-value">AED {{ "%.4f"|format(secondary.calculate_cost_per_unit()) }} / {{ secondary.unit }}</span>
+                        <span class="summary-value">AED {{ "%.4f"|format(secondary.calculate_cost_per_unit() if secondary.calculate_cost_per_unit() else 0.0) }} / {{ secondary.unit }}</span>
                     </div>
                 </div>
             </div>

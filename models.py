@@ -86,13 +86,35 @@ class HomemadeIngredient(db.Model):
     # We'll enforce uniqueness in the application code instead
 
     def calculate_cost(self):
-        return round(sum(i.calculate_cost() for i in self.ingredients), 2)
+        """Calculate total cost including all ingredient items"""
+        try:
+            total = 0.0
+            for i in self.ingredients:
+                try:
+                    cost = i.calculate_cost()
+                    total += cost
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Error calculating cost for ingredient item {i.id}: {str(e)}")
+                    # Continue with other ingredients
+                    continue
+            return round(total, 2)
+        except Exception as e:
+            import logging
+            logging.error(f"Error calculating total cost for HomemadeIngredient {self.id}: {str(e)}")
+            return 0.0
     
     def calculate_cost_per_unit(self):
         """Calculate cost per unit (ml, gram, etc.)"""
-        if self.total_volume_ml > 0:
-            return round(self.calculate_cost() / self.total_volume_ml, 4)
-        return 0.0
+        try:
+            if self.total_volume_ml and self.total_volume_ml > 0:
+                total_cost = self.calculate_cost()
+                return round(total_cost / self.total_volume_ml, 4)
+            return 0.0
+        except Exception as e:
+            import logging
+            logging.error(f"Error calculating cost per unit for HomemadeIngredient {self.id}: {str(e)}")
+            return 0.0
 
 class HomemadeIngredientItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -105,15 +127,22 @@ class HomemadeIngredientItem(db.Model):
 
     def calculate_cost(self):
         """Calculate cost based on product's unit and quantity"""
-        prod = self.product
-        qty = self.quantity
+        try:
+            prod = self.product
+            qty = self.quantity
 
-        if not prod:
-            return 0.0
+            if not prod:
+                return 0.0
 
-        # If cost_per_unit is None or 0, return 0
-        if prod.cost_per_unit is None or prod.cost_per_unit == 0:
+            # If cost_per_unit is None or 0, return 0
+            if prod.cost_per_unit is None or prod.cost_per_unit == 0:
+                return 0.0
+        except Exception as e:
+            import logging
+            logging.warning(f"Error accessing product for HomemadeIngredientItem {self.id}: {str(e)}")
             return 0.0
+        
+        try:
 
         # Calculate cost per unit based on product's selling unit
         if prod.selling_unit == "ml":
