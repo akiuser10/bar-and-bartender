@@ -19,7 +19,7 @@ def secondary_ingredients():
     try:
         # Eagerly load ingredients and their products to ensure cost calculation works
         from sqlalchemy.orm import joinedload
-        secondary_items = HomemadeIngredient.query.filter_by(user_id=current_user.id).options(
+        secondary_items = HomemadeIngredient.query.filter(HomemadeIngredient.user_id == current_user.id).options(
             joinedload(HomemadeIngredient.ingredients).joinedload(HomemadeIngredientItem.product)
         ).all()
         
@@ -108,8 +108,8 @@ def view_secondary_ingredient(id):
 @login_required
 def add_secondary_ingredient():
     ensure_schema_updates()
-    products = Product.query.filter_by(user_id=current_user.id).order_by(Product.description).all()
-    existing_secondary = HomemadeIngredient.query.filter_by(user_id=current_user.id).order_by(HomemadeIngredient.name).all()
+    products = Product.query.filter(Product.user_id == current_user.id).order_by(Product.description).all()
+    existing_secondary = HomemadeIngredient.query.filter(HomemadeIngredient.user_id == current_user.id).order_by(HomemadeIngredient.name).all()
     ingredient_options = [
         {
             'label': f"{p.description} ({p.barbuddy_code})",
@@ -303,7 +303,7 @@ def edit_secondary_ingredient(id):
     _ = secondary.ingredients
     for item in secondary.ingredients:
         _ = item.product
-    products = Product.query.filter_by(user_id=current_user.id).order_by(Product.description).all()
+    products = Product.query.filter(Product.user_id == current_user.id).order_by(Product.description).all()
     existing_secondary = HomemadeIngredient.query.filter_by(user_id=current_user.id).filter(HomemadeIngredient.id != id).order_by(HomemadeIngredient.name).all()
 
     ingredient_options = [
@@ -565,7 +565,7 @@ def link_ingredient_to_secondary(id):
             return redirect(url_for('secondary.link_ingredient_to_secondary', id=id))
     
     # GET request - show form
-    products = Product.query.filter_by(user_id=current_user.id).order_by(Product.description).all()
+    products = Product.query.filter(Product.user_id == current_user.id).order_by(Product.description).all()
     existing_items = HomemadeIngredientItem.query.filter_by(homemade_id=id).all()
     
     return render_template('secondary_ingredients/link_ingredient.html', 

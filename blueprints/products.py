@@ -39,14 +39,14 @@ def add_product():
         unique_item_number = (request.form.get('unique_item_number', '') or '').strip()
 
         if unique_item_number:
-            if Product.query.filter_by(user_id=current_user.id, unique_item_number=unique_item_number).first():
+            if Product.query.filter(Product.user_id == current_user.id, Product.unique_item_number == unique_item_number).first():
                 flash('Unique item number already exists. Please use a different value.')
                 return redirect(url_for('products.add_product'))
         else:
             unique_item_number = f"ITEM-{uuid.uuid4().hex[:8].upper()}"
 
         # Get latest product for this user to generate next code
-        latest_product = Product.query.filter_by(user_id=current_user.id).order_by(Product.id.desc()).first()
+        latest_product = Product.query.filter(Product.user_id == current_user.id).order_by(Product.id.desc()).first()
         if latest_product and latest_product.barbuddy_code and latest_product.barbuddy_code[2:].isdigit():
             next_number = int(latest_product.barbuddy_code[2:]) + 1
         else:
@@ -90,8 +90,9 @@ def ingredients_master():
     try:
         category_filter = request.args.get('category', '')
         level_filter = request.args.get('level', '')
-        products = Product.query.filter_by(user_id=current_user.id).all()
-        secondary_items = HomemadeIngredient.query.filter_by(user_id=current_user.id).all()
+        # Filter by user_id, excluding NULL user_id records (old data)
+        products = Product.query.filter(Product.user_id == current_user.id).all()
+        secondary_items = HomemadeIngredient.query.filter(HomemadeIngredient.user_id == current_user.id).all()
 
         rows = []
         for p in products:
@@ -131,7 +132,7 @@ def ingredients_master():
         if level_filter:
             rows = [r for r in rows if (r['item_level'] or 'Primary') == level_filter]
 
-        categories = db.session.query(Product.sub_category).filter_by(user_id=current_user.id).distinct().all()
+        categories = db.session.query(Product.sub_category).filter(Product.user_id == current_user.id).distinct().all()
         categories = [c[0] for c in categories if c[0]]
         default_categories = ['Alcohol', 'Non Alcohol', 'Non-Alcohol', 'Fruits', 'Vegetables', 'Dairy', 'Syrups & Purees', 'Syrup', 'Puree', 'Juice', 'Other', 'Food', 'Beverage', 'Secondary Ingredient']
         categories = sorted(set(categories + default_categories))
@@ -161,13 +162,13 @@ def add_ingredient():
         bottles_per_case = int(request.form.get('bottles_per_case', 1) or 1)
 
         if unique_item_number:
-            if Product.query.filter_by(user_id=current_user.id, unique_item_number=unique_item_number).first():
+            if Product.query.filter(Product.user_id == current_user.id, Product.unique_item_number == unique_item_number).first():
                 flash('Unique item number already exists. Please use a different one.')
                 return redirect(url_for('products.ingredients_master'))
         else:
             unique_item_number = f"ITEM-{uuid.uuid4().hex[:8].upper()}"
 
-        latest_product = Product.query.filter_by(user_id=current_user.id).order_by(Product.id.desc()).first()
+        latest_product = Product.query.filter(Product.user_id == current_user.id).order_by(Product.id.desc()).first()
         if latest_product and latest_product.barbuddy_code and latest_product.barbuddy_code[2:].isdigit():
             next_number = int(latest_product.barbuddy_code[2:]) + 1
         else:
@@ -208,7 +209,7 @@ def add_ingredient():
 @products_bp.route('/ingredients/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_ingredient(id):
-    product = Product.query.filter_by(id=id, user_id=current_user.id).first_or_404()
+    product = Product.query.filter(Product.id == id, Product.user_id == current_user.id).first_or_404()
     if request.method == 'POST':
         product.unique_item_number = request.form.get('unique_item_number', product.unique_item_number)
         product.description = request.form['description']
@@ -240,7 +241,7 @@ def edit_ingredient(id):
 @products_bp.route('/ingredients/<int:id>/delete', methods=['POST'])
 @login_required
 def delete_ingredient(id):
-    product = Product.query.filter_by(id=id, user_id=current_user.id).first_or_404()
+    product = Product.query.filter(Product.id == id, Product.user_id == current_user.id).first_or_404()
     db.session.delete(product)
     db.session.commit()
     flash('Ingredient deleted successfully!')
@@ -253,7 +254,7 @@ def delete_all_ingredients():
     try:
         ensure_schema_updates()
         # Delete all products for this user (not secondary ingredients)
-        products = Product.query.filter_by(user_id=current_user.id).all()
+        products = Product.query.filter(Product.user_id == current_user.id).all()
         count = len(products)
         for product in products:
             db.session.delete(product)
@@ -279,7 +280,7 @@ def delete_selected_ingredients():
         count = 0
         for item_id in selected_ids:
             try:
-                product = Product.query.filter_by(id=int(item_id), user_id=current_user.id).first()
+                product = Product.query.filter(Product.id == int(item_id), Product.user_id == current_user.id).first()
                 if product:
                     db.session.delete(product)
                     count += 1
@@ -333,7 +334,7 @@ def bulk_upload_products():
 
     created = 0
     skipped = 0
-    base_count = Product.query.filter_by(user_id=current_user.id).count()
+    base_count = Product.query.filter(Product.user_id == current_user.id).count()
 
     for idx, row in df.iterrows():
         try:
@@ -366,12 +367,12 @@ def bulk_upload_products():
 
             unique_col = normalized_columns.get('UNIQUE ITEM #')
             unique_item_number = clean_str(row.get(unique_col)) if unique_col else ''
-            if unique_item_number and Product.query.filter_by(user_id=current_user.id, unique_item_number=unique_item_number).first():
+            if unique_item_number and Product.query.filter(Product.user_id == current_user.id, Product.unique_item_number == unique_item_number).first():
                 unique_item_number = ''
 
             code_col = normalized_columns.get('CODE')
             barbuddy_code = clean_str(row.get(code_col)) if code_col else ''
-            if barbuddy_code and Product.query.filter_by(user_id=current_user.id, barbuddy_code=barbuddy_code).first():
+            if barbuddy_code and Product.query.filter(Product.user_id == current_user.id, Product.barbuddy_code == barbuddy_code).first():
                 barbuddy_code = ''
 
             quantity_col = normalized_columns.get('QUANTITY')

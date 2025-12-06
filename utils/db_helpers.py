@@ -123,6 +123,22 @@ def ensure_schema_updates():
                     conn.execute(db.text("UPDATE homemade_ingredient_item SET quantity_ml = COALESCE(quantity_ml, COALESCE(quantity, 0)) WHERE quantity_ml IS NULL"))
                 except Exception:
                     pass  # Column might not exist or already updated
+                
+                # Add user_id columns if they don't exist
+                if 'user_id' not in product_columns:
+                    try:
+                        conn.execute(db.text("ALTER TABLE product ADD COLUMN user_id INTEGER"))
+                        conn.execute(db.text("ALTER TABLE product ADD CONSTRAINT fk_product_user FOREIGN KEY (user_id) REFERENCES user(id)"))
+                    except Exception:
+                        pass  # Column might already exist or constraint might fail
+                
+                homemade_columns = get_table_columns(conn, 'homemade_ingredient')
+                if 'user_id' not in homemade_columns:
+                    try:
+                        conn.execute(db.text("ALTER TABLE homemade_ingredient ADD COLUMN user_id INTEGER"))
+                        conn.execute(db.text("ALTER TABLE homemade_ingredient ADD CONSTRAINT fk_homemade_user FOREIGN KEY (user_id) REFERENCES user(id)"))
+                    except Exception:
+                        pass  # Column might already exist or constraint might fail
     except Exception as e:
         # Log error but don't crash - schema updates are best effort
         current_app.logger.warning(f'Schema update warning: {str(e)}')

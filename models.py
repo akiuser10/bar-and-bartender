@@ -36,7 +36,7 @@ class VerificationCode(db.Model):
 # -------------------------
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Made nullable for migration
     user = db.relationship('User', backref='products')
     unique_item_number = db.Column(db.String(50))
     supplier = db.Column(db.String(120))
@@ -68,7 +68,7 @@ class Product(db.Model):
 # -------------------------
 class HomemadeIngredient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Made nullable for migration
     user = db.relationship('User', backref='homemade_ingredients')
     name = db.Column(db.String(150), nullable=False)
     unique_code = db.Column(db.String(50))
