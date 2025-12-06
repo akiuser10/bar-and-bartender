@@ -408,18 +408,30 @@ def bulk_upload_products():
 
             sub_cat_col = normalized_columns.get('SUB CATEGORY')
             # Preserve the exact sub_category from Excel sheet if it exists and is not empty
-            if sub_cat_col and row.get(sub_cat_col):
-                sub_category_raw = str(row.get(sub_cat_col)).strip()
-                sub_category = sub_category_raw if sub_category_raw else 'Other'
+            if sub_cat_col:
+                try:
+                    sub_category_value = row[sub_cat_col]
+                    # Check if value is NaN or empty using pandas
+                    if pd.isna(sub_category_value) or sub_category_value is None:
+                        sub_category = 'Other'
+                    else:
+                        # Preserve the exact value from Excel, even if it's "Other"
+                        sub_category = str(sub_category_value).strip()
+                        if not sub_category:  # Empty string after strip
+                            sub_category = 'Other'
+                except (KeyError, IndexError):
+                    sub_category = 'Other'
             else:
-                # Only set to 'Other' if column doesn't exist or is truly empty
+                # Column doesn't exist in Excel
                 sub_category = 'Other'
             
             # Use AI to categorize ONLY if category or sub_category is truly missing/empty
-            # Don't use AI if sub_category is explicitly "Other" from the Excel sheet
+            # Don't use AI if sub_category has a value from the Excel sheet (even if it's "Other")
             category_missing = not category or category.strip() == '' or category.strip() == 'Other'
-            sub_category_missing = (not sub_cat_col or not row.get(sub_cat_col) or 
-                                   (sub_category and sub_category.strip() == ''))
+            # Only use AI for sub_category if the column was missing or the value was truly empty/NaN
+            sub_category_missing = (not sub_cat_col or 
+                                   (sub_cat_col and (pd.isna(row.get(sub_cat_col)) or 
+                                                    str(row.get(sub_cat_col)).strip() == '')))
             
             if category_missing or sub_category_missing:
                 try:
@@ -427,7 +439,7 @@ def bulk_upload_products():
                     if ai_category and category_missing:
                         category = ai_category
                         current_app.logger.info(f'AI categorized "{description}" as category: {category}')
-                    # Only overwrite sub_category if it was truly missing (not explicitly "Other" from sheet)
+                    # Only overwrite sub_category if it was truly missing (column missing or empty/NaN)
                     if ai_sub_category and sub_category_missing:
                         sub_category = ai_sub_category
                         current_app.logger.info(f'AI categorized "{description}" as sub_category: {sub_category}')
