@@ -240,7 +240,7 @@ def add_recipe(category):
                 # Generate unique recipe code (per user)
                 max_attempts = 100
                 recipe_code = None
-                    user_recipe_count = Recipe.query.filter(Recipe.user_id == current_user.id).count()
+                user_recipe_count = Recipe.query.filter(Recipe.user_id == current_user.id).count()
                 for attempt in range(max_attempts):
                     candidate_code = f"REC-{user_recipe_count + attempt + 1:04d}"
                     existing = Recipe.query.filter(Recipe.user_id == current_user.id, Recipe.recipe_code == candidate_code).first()
