@@ -123,6 +123,14 @@
                     {{ recipe.garnish if recipe.garnish else "No garnish specified." }}
                 </div>
             </div>
+            {% if recipe.food_category %}
+            <div class="category-section">
+                <div class="section-header">CATEGORY:</div>
+                <div class="section-content">
+                    {{ recipe.food_category }}
+                </div>
+            </div>
+            {% endif %}
 
             <div class="recipe-details-section">
                 <div class="section-header">RECIPE DETAILS</div>
