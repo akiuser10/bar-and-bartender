@@ -780,6 +780,7 @@ main .page-panel .recipe-view-container {
 
 .method-section,
 .garnish-section,
+.category-section,
 .recipe-details-section {
     background: white;
     border: 1px solid #ddd;
@@ -800,7 +801,8 @@ main .page-panel .recipe-view-container {
     overflow: visible;
 }
 
-.garnish-section {
+.garnish-section,
+.category-section {
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -860,6 +862,20 @@ main .page-panel .recipe-view-container {
     display: flex;
     flex-direction: column;
     min-height: 0;
+}
+
+.method-section .section-content,
+.category-section .section-content {
+    padding: 10px;
+}
+
+.section-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: #fff;
 }
 
 .method-section .section-content {
