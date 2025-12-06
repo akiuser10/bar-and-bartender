@@ -33,7 +33,11 @@ def create_app(config_object='config.Config'):
     # Initialize extensions
     db.init_app(app)
     login_manager.init_app(app)
-    mail.init_app(app)
+    # Initialize mail (optional - won't crash if email not configured)
+    try:
+        mail.init_app(app)
+    except Exception as e:
+        app.logger.warning(f'Mail extension initialization warning: {str(e)}')
     
     # Configure login manager
     login_manager.login_view = 'auth.login'
