@@ -334,7 +334,7 @@ def edit_secondary_ingredient(id):
         products = Product.query.filter(Product.user_id == current_user.id).order_by(Product.description).all()
         existing_secondary = HomemadeIngredient.query.filter(HomemadeIngredient.user_id == current_user.id, HomemadeIngredient.id != id).order_by(HomemadeIngredient.name).all()
 
-    ingredient_options = [
+        ingredient_options = [
         {
             'label': f"{p.description} ({p.barbuddy_code})",
             'id': p.id,
@@ -362,7 +362,7 @@ def edit_secondary_ingredient(id):
                 'container_volume': sec.total_volume_ml or 1
             })
 
-    if request.method == 'POST':
+        if request.method == 'POST':
         try:
             name = request.form.get('name', '').strip()
             if not name:
