@@ -344,26 +344,26 @@ def edit_secondary_ingredient(id):
             'cost_per_unit': p.cost_per_unit or 0.0,
             'container_volume': p.ml_in_bottle or (1 if (p.selling_unit or '').lower() == 'ml' else 0)
         }
-        for p in products
-    ]
-    for sec in existing_secondary:
-        if sec.unique_code:
-            try:
-                cost_per_unit = sec.calculate_cost_per_unit()
-            except Exception:
-                cost_per_unit = 0.0
-            ingredient_options.append({
-                'label': f"{sec.name} ({sec.unique_code})",
-                'id': sec.id,
-                'type': 'Secondary',
-                'code': sec.unique_code or 'N/A',
-                'unit': sec.unit or 'ml',
-                'cost_per_unit': cost_per_unit,
-                'container_volume': sec.total_volume_ml or 1
-            })
+            for p in products
+        ]
+        for sec in existing_secondary:
+            if sec.unique_code:
+                try:
+                    cost_per_unit = sec.calculate_cost_per_unit()
+                except Exception:
+                    cost_per_unit = 0.0
+                ingredient_options.append({
+                    'label': f"{sec.name} ({sec.unique_code})",
+                    'id': sec.id,
+                    'type': 'Secondary',
+                    'code': sec.unique_code or 'N/A',
+                    'unit': sec.unit or 'ml',
+                    'cost_per_unit': cost_per_unit,
+                    'container_volume': sec.total_volume_ml or 1
+                })
 
         if request.method == 'POST':
-        try:
+            try:
             name = request.form.get('name', '').strip()
             if not name:
                 flash('Name is required.')
