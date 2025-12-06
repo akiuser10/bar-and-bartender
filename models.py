@@ -55,8 +55,9 @@ class Product(db.Model):
     case_cost = db.Column(db.Float, default=0.0)
     image_path = db.Column(db.String(255))
     
-    # Add unique constraint on user_id + barbuddy_code combination
-    __table_args__ = (db.UniqueConstraint('user_id', 'barbuddy_code', name='_user_barbuddy_code_uc'),)
+    # Unique constraint will be handled at application level
+    # SQL unique constraints with nullable columns can cause issues
+    # We'll enforce uniqueness in the application code instead
 
     def calculate_case_cost(self):
         if self.purchase_type == "case":
@@ -80,8 +81,9 @@ class HomemadeIngredient(db.Model):
     method = db.Column(db.Text)
     ingredients = db.relationship('HomemadeIngredientItem', backref='homemade', cascade='all, delete-orphan')
     
-    # Add unique constraint on user_id + unique_code combination
-    __table_args__ = (db.UniqueConstraint('user_id', 'unique_code', name='_user_unique_code_uc'),)
+    # Unique constraint will be handled at application level
+    # SQL unique constraints with nullable columns can cause issues
+    # We'll enforce uniqueness in the application code instead
 
     def calculate_cost(self):
         return round(sum(i.calculate_cost() for i in self.ingredients), 2)
