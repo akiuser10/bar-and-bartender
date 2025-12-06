@@ -146,16 +146,28 @@ def ensure_schema_updates():
                 if 'user_id' not in product_columns:
                     try:
                         conn.execute(db.text("ALTER TABLE product ADD COLUMN user_id INTEGER"))
-                        conn.execute(db.text("ALTER TABLE product ADD CONSTRAINT fk_product_user FOREIGN KEY (user_id) REFERENCES user(id)"))
-                    except Exception:
+                        # Use quoted table name for PostgreSQL (user is a reserved word)
+                        db_url = str(db.engine.url)
+                        if 'postgresql' in db_url or 'postgres' in db_url:
+                            conn.execute(db.text('ALTER TABLE product ADD CONSTRAINT fk_product_user FOREIGN KEY (user_id) REFERENCES "user"(id)'))
+                        else:
+                            conn.execute(db.text("ALTER TABLE product ADD CONSTRAINT fk_product_user FOREIGN KEY (user_id) REFERENCES user(id)"))
+                    except Exception as e:
+                        current_app.logger.warning(f'Could not add user_id to product: {str(e)}')
                         pass  # Column might already exist or constraint might fail
                 
                 homemade_columns = get_table_columns(conn, 'homemade_ingredient')
                 if 'user_id' not in homemade_columns:
                     try:
                         conn.execute(db.text("ALTER TABLE homemade_ingredient ADD COLUMN user_id INTEGER"))
-                        conn.execute(db.text("ALTER TABLE homemade_ingredient ADD CONSTRAINT fk_homemade_user FOREIGN KEY (user_id) REFERENCES user(id)"))
-                    except Exception:
+                        # Use quoted table name for PostgreSQL (user is a reserved word)
+                        db_url = str(db.engine.url)
+                        if 'postgresql' in db_url or 'postgres' in db_url:
+                            conn.execute(db.text('ALTER TABLE homemade_ingredient ADD CONSTRAINT fk_homemade_user FOREIGN KEY (user_id) REFERENCES "user"(id)'))
+                        else:
+                            conn.execute(db.text("ALTER TABLE homemade_ingredient ADD CONSTRAINT fk_homemade_user FOREIGN KEY (user_id) REFERENCES user(id)"))
+                    except Exception as e:
+                        current_app.logger.warning(f'Could not add user_id to homemade_ingredient: {str(e)}')
                         pass  # Column might already exist or constraint might fail
     except Exception as e:
         # Log error but don't crash - schema updates are best effort

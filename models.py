@@ -70,7 +70,7 @@ class Product(db.Model):
 class HomemadeIngredient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Made nullable for migration
-    user = db.relationship('User', backref='homemade_ingredients')
+    user = db.relationship('User', foreign_keys=[user_id], backref='homemade_ingredients')
     name = db.Column(db.String(150), nullable=False)
     unique_code = db.Column(db.String(50))
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # Keep for backward compatibility
