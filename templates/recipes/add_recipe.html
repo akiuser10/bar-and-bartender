@@ -56,6 +56,52 @@
                         <label for="recipe-food-category" class="sr-only">Category</label>
                         <select id="recipe-food-category" name="food_category" title="Category" class="section-select">
                             <option value="">Select Category (optional)</option>
+                            <!-- Cocktails -->
+                            <option value="Classic Cocktail" {% if edit_mode and recipe and recipe.food_category == 'Classic Cocktail' %}selected{% endif %}>Classic Cocktail</option>
+                            <option value="Signature Cocktail" {% if edit_mode and recipe and recipe.food_category == 'Signature Cocktail' %}selected{% endif %}>Signature Cocktail</option>
+                            <option value="Mocktail" {% if edit_mode and recipe and recipe.food_category == 'Mocktail' %}selected{% endif %}>Mocktail</option>
+                            <!-- Wines -->
+                            <option value="Red Wine GLS" {% if edit_mode and recipe and recipe.food_category == 'Red Wine GLS' %}selected{% endif %}>Red Wine GLS</option>
+                            <option value="Red Wine BTL" {% if edit_mode and recipe and recipe.food_category == 'Red Wine BTL' %}selected{% endif %}>Red Wine BTL</option>
+                            <option value="White Wine GLS" {% if edit_mode and recipe and recipe.food_category == 'White Wine GLS' %}selected{% endif %}>White Wine GLS</option>
+                            <option value="White Wine BTL" {% if edit_mode and recipe and recipe.food_category == 'White Wine BTL' %}selected{% endif %}>White Wine BTL</option>
+                            <option value="Rose Wine GLS" {% if edit_mode and recipe and recipe.food_category == 'Rose Wine GLS' %}selected{% endif %}>Rose Wine GLS</option>
+                            <option value="Rose Wine BTL" {% if edit_mode and recipe and recipe.food_category == 'Rose Wine BTL' %}selected{% endif %}>Rose Wine BTL</option>
+                            <option value="Sparkling Wine GLS" {% if edit_mode and recipe and recipe.food_category == 'Sparkling Wine GLS' %}selected{% endif %}>Sparkling Wine GLS</option>
+                            <option value="Sparkling Wine BTL" {% if edit_mode and recipe and recipe.food_category == 'Sparkling Wine BTL' %}selected{% endif %}>Sparkling Wine BTL</option>
+                            <option value="Sweet Wine GLS" {% if edit_mode and recipe and recipe.food_category == 'Sweet Wine GLS' %}selected{% endif %}>Sweet Wine GLS</option>
+                            <option value="Sweet Wine BTL" {% if edit_mode and recipe and recipe.food_category == 'Sweet Wine BTL' %}selected{% endif %}>Sweet Wine BTL</option>
+                            <!-- Spirits -->
+                            <option value="Vodka SHT" {% if edit_mode and recipe and recipe.food_category == 'Vodka SHT' %}selected{% endif %}>Vodka SHT</option>
+                            <option value="Vodka BTL" {% if edit_mode and recipe and recipe.food_category == 'Vodka BTL' %}selected{% endif %}>Vodka BTL</option>
+                            <option value="Gin SHT" {% if edit_mode and recipe and recipe.food_category == 'Gin SHT' %}selected{% endif %}>Gin SHT</option>
+                            <option value="Gin BTL" {% if edit_mode and recipe and recipe.food_category == 'Gin BTL' %}selected{% endif %}>Gin BTL</option>
+                            <option value="Rum SHT" {% if edit_mode and recipe and recipe.food_category == 'Rum SHT' %}selected{% endif %}>Rum SHT</option>
+                            <option value="Rum BTL" {% if edit_mode and recipe and recipe.food_category == 'Rum BTL' %}selected{% endif %}>Rum BTL</option>
+                            <option value="Tequila SHT" {% if edit_mode and recipe and recipe.food_category == 'Tequila SHT' %}selected{% endif %}>Tequila SHT</option>
+                            <option value="Tequila BTL" {% if edit_mode and recipe and recipe.food_category == 'Tequila BTL' %}selected{% endif %}>Tequila BTL</option>
+                            <option value="Whiskey SHT" {% if edit_mode and recipe and recipe.food_category == 'Whiskey SHT' %}selected{% endif %}>Whiskey SHT</option>
+                            <option value="Whiskey BTL" {% if edit_mode and recipe and recipe.food_category == 'Whiskey BTL' %}selected{% endif %}>Whiskey BTL</option>
+                            <option value="Whisky SHT" {% if edit_mode and recipe and recipe.food_category == 'Whisky SHT' %}selected{% endif %}>Whisky SHT</option>
+                            <option value="Whisky BTL" {% if edit_mode and recipe and recipe.food_category == 'Whisky BTL' %}selected{% endif %}>Whisky BTL</option>
+                            <option value="Brandy SHT" {% if edit_mode and recipe and recipe.food_category == 'Brandy SHT' %}selected{% endif %}>Brandy SHT</option>
+                            <option value="Brandy BTL" {% if edit_mode and recipe and recipe.food_category == 'Brandy BTL' %}selected{% endif %}>Brandy BTL</option>
+                            <option value="Cognac SHT" {% if edit_mode and recipe and recipe.food_category == 'Cognac SHT' %}selected{% endif %}>Cognac SHT</option>
+                            <option value="Cognac BTL" {% if edit_mode and recipe and recipe.food_category == 'Cognac BTL' %}selected{% endif %}>Cognac BTL</option>
+                            <!-- Beer -->
+                            <option value="Beer Draught" {% if edit_mode and recipe and recipe.food_category == 'Beer Draught' %}selected{% endif %}>Beer Draught</option>
+                            <option value="Beer Bottle" {% if edit_mode and recipe and recipe.food_category == 'Beer Bottle' %}selected{% endif %}>Beer Bottle</option>
+                            <!-- Amaro & Vermouth -->
+                            <option value="Amaro SHT" {% if edit_mode and recipe and recipe.food_category == 'Amaro SHT' %}selected{% endif %}>Amaro SHT</option>
+                            <option value="Amaro BTL" {% if edit_mode and recipe and recipe.food_category == 'Amaro BTL' %}selected{% endif %}>Amaro BTL</option>
+                            <option value="Vermouth SHT" {% if edit_mode and recipe and recipe.food_category == 'Vermouth SHT' %}selected{% endif %}>Vermouth SHT</option>
+                            <option value="Vermouth BTL" {% if edit_mode and recipe and recipe.food_category == 'Vermouth BTL' %}selected{% endif %}>Vermouth BTL</option>
+                            <!-- Liqueurs -->
+                            <option value="Generic Liqueur SHT" {% if edit_mode and recipe and recipe.food_category == 'Generic Liqueur SHT' %}selected{% endif %}>Generic Liqueur SHT</option>
+                            <option value="Generic Liqueur BTL" {% if edit_mode and recipe and recipe.food_category == 'Generic Liqueur BTL' %}selected{% endif %}>Generic Liqueur BTL</option>
+                            <option value="Branded Liqueur SHT" {% if edit_mode and recipe and recipe.food_category == 'Branded Liqueur SHT' %}selected{% endif %}>Branded Liqueur SHT</option>
+                            <option value="Branded Liqueur BTL" {% if edit_mode and recipe and recipe.food_category == 'Branded Liqueur BTL' %}selected{% endif %}>Branded Liqueur BTL</option>
+                            <!-- Food Categories -->
                             <option value="Coffee" {% if edit_mode and recipe and recipe.food_category == 'Coffee' %}selected{% endif %}>Coffee</option>
                             <option value="Tea" {% if edit_mode and recipe and recipe.food_category == 'Tea' %}selected{% endif %}>Tea</option>
                             <option value="Pizza" {% if edit_mode and recipe and recipe.food_category == 'Pizza' %}selected{% endif %}>Pizza</option>
