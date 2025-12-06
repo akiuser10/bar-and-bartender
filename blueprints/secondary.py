@@ -19,9 +19,21 @@ def secondary_ingredients():
     try:
         # Eagerly load ingredients and their products to ensure cost calculation works
         from sqlalchemy.orm import joinedload
-        secondary_items = HomemadeIngredient.query.filter(HomemadeIngredient.user_id == current_user.id).options(
-            joinedload(HomemadeIngredient.ingredients).joinedload(HomemadeIngredientItem.product)
-        ).all()
+        try:
+            # Check if user_id column exists
+            test_query = db.session.query(HomemadeIngredient.user_id).limit(1).first()
+            secondary_items = HomemadeIngredient.query.filter(HomemadeIngredient.user_id == current_user.id).options(
+                joinedload(HomemadeIngredient.ingredients).joinedload(HomemadeIngredientItem.product)
+            ).all()
+        except Exception as e:
+            current_app.logger.warning(f'user_id column may not exist yet: {str(e)}')
+            # Fallback: get all items (for migration period)
+            try:
+                secondary_items = HomemadeIngredient.query.options(
+                    joinedload(HomemadeIngredient.ingredients).joinedload(HomemadeIngredientItem.product)
+                ).all()
+            except:
+                secondary_items = []
         
         table_rows = []
         for item in secondary_items:

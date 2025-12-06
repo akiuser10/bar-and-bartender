@@ -93,13 +93,21 @@ def ingredients_master():
         # Filter by user_id, excluding NULL user_id records (old data)
         # Handle case where user_id column might not exist yet
         try:
+            # Check if user_id column exists by trying a simple query
+            test_query = db.session.query(Product.user_id).limit(1).first()
+            # If we get here, column exists - filter by user
             products = Product.query.filter(Product.user_id == current_user.id).all()
             secondary_items = HomemadeIngredient.query.filter(HomemadeIngredient.user_id == current_user.id).all()
         except Exception as e:
             # If user_id column doesn't exist, return empty lists
             current_app.logger.warning(f'user_id column may not exist yet: {str(e)}')
-            products = []
-            secondary_items = []
+            # Try to get all products (for migration period)
+            try:
+                products = Product.query.all()
+                secondary_items = HomemadeIngredient.query.all()
+            except:
+                products = []
+                secondary_items = []
 
         rows = []
         for p in products:

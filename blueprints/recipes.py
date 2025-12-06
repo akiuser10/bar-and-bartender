@@ -21,9 +21,19 @@ def recipes_list():
         from sqlalchemy.orm import joinedload
         # Eagerly load ingredients to avoid N+1 queries and ensure cost calculation works
         from sqlalchemy import and_
-        recipes = Recipe.query.filter(Recipe.user_id == current_user.id).options(
-            joinedload(Recipe.ingredients)
-        ).all()
+        try:
+            # Check if user_id column exists
+            test_query = db.session.query(Recipe.user_id).limit(1).first()
+            recipes = Recipe.query.filter(Recipe.user_id == current_user.id).options(
+                joinedload(Recipe.ingredients)
+            ).all()
+        except Exception as e:
+            current_app.logger.warning(f'user_id column may not exist yet: {str(e)}')
+            # Fallback: get all recipes (for migration period)
+            try:
+                recipes = Recipe.query.options(joinedload(Recipe.ingredients)).all()
+            except:
+                recipes = []
         
         recipe_type_filter = request.args.get('type', '')
         category_filter = (request.args.get('category', '') or '').lower()
