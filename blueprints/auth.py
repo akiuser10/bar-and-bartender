@@ -20,10 +20,21 @@ def register():
             username = request.form.get('username', '').strip()
             email = request.form.get('email', '').strip()
             password = request.form.get('password', '')
+            password_confirm = request.form.get('password_confirm', '')
 
             # Validate inputs
-            if not username or not email or not password:
+            if not username or not email or not password or not password_confirm:
                 flash('Please fill in all fields.')
+                return render_template('register.html')
+            
+            # Validate passwords match
+            if password != password_confirm:
+                flash('Passwords do not match. Please try again.')
+                return render_template('register.html')
+            
+            # Validate password length
+            if len(password) < 6:
+                flash('Password must be at least 6 characters long.')
                 return render_template('register.html')
 
             # Validate email format
@@ -207,11 +218,11 @@ def resend_code():
         
         email_sent = send_verification_email(email, code)
         if email_sent:
-            flash('New verification code sent to your email.')
+            flash('New verification code sent to your email. Please check your inbox (and spam folder).')
         else:
             from flask import current_app
-            current_app.logger.warning(f'Email not configured - showing code in flash message for {email}')
-            flash(f'⚠️ Email not configured. Your new verification code is: {code}', 'warning')
+            current_app.logger.error(f'Email not configured - cannot resend verification code to {email}')
+            flash('⚠️ Email service is not configured. Please contact administrator.', 'error')
     except Exception as e:
         from flask import current_app
         current_app.logger.error(f'Error resending code: {str(e)}', exc_info=True)
@@ -224,13 +235,25 @@ def resend_code():
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        user = User.query.filter_by(email=request.form['email']).first()
-        if user and check_password_hash(user.password, request.form['password']):
+        login_input = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        
+        if not login_input or not password:
+            flash('Please enter both email/username and password.')
+            return render_template('login.html')
+        
+        # Try to find user by email first, then by username
+        user = User.query.filter_by(email=login_input).first()
+        if not user:
+            # If not found by email, try username
+            user = User.query.filter_by(username=login_input).first()
+        
+        if user and check_password_hash(user.password, password):
             login_user(user)
             flash('Welcome back!')
             return redirect(url_for('main.index'))
         else:
-            flash('Invalid email or password.')
+            flash('Invalid email/username or password.')
     return render_template('login.html')
 
 

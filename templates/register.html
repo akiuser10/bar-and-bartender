@@ -9,11 +9,36 @@
     <input type="email" id="email-register" name="email" required placeholder="Enter your email" title="Email">
 
     <label for="password-register">Password:</label>
-    <input type="password" id="password-register" name="password" required placeholder="Enter your password" title="Password">
+    <input type="password" id="password-register" name="password" required placeholder="Enter your password" title="Password" minlength="6">
+
+    <label for="password-confirm">Confirm Password:</label>
+    <input type="password" id="password-confirm" name="password_confirm" required placeholder="Re-enter your password" title="Confirm Password" minlength="6">
 
     <div class="actions">
         <button type="submit" class="btn">Register</button>
         <a href="{{ url_for('auth.login') }}" class="btn secondary">Already have an account?</a>
     </div>
+</form>
+
+<script>
+// Validate password match on form submission
+document.querySelector('form').addEventListener('submit', function(e) {
+    const password = document.getElementById('password-register').value;
+    const passwordConfirm = document.getElementById('password-confirm').value;
+    
+    if (password !== passwordConfirm) {
+        e.preventDefault();
+        alert('Passwords do not match. Please try again.');
+        document.getElementById('password-confirm').focus();
+        return false;
+    }
+    
+    if (password.length < 6) {
+        e.preventDefault();
+        alert('Password must be at least 6 characters long.');
+        document.getElementById('password-register').focus();
+        return false;
+    }
+});
 </form>
 {% endblock %}
