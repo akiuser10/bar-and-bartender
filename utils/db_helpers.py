@@ -9,19 +9,37 @@ def get_table_columns(conn, table_name):
     """
     Get list of column names for a table, works with both SQLite and PostgreSQL.
     """
-    db_url = str(db.engine.url)
-    
-    if 'postgresql' in db_url or 'postgres' in db_url:
-        # PostgreSQL
-        result = conn.execute(db.text(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name = :table_name"
-        ), {'table_name': table_name})
-        return [row[0] for row in result]
-    else:
-        # SQLite
-        result = conn.execute(db.text(f'PRAGMA table_info({table_name})'))
-        return [col[1] for col in result]
+    try:
+        db_url = str(db.engine.url)
+        
+        if 'postgresql' in db_url or 'postgres' in db_url:
+            # PostgreSQL
+            result = conn.execute(db.text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = :table_name"
+            ), {'table_name': table_name})
+            return [row[0] for row in result]
+        else:
+            # SQLite
+            result = conn.execute(db.text(f'PRAGMA table_info({table_name})'))
+            return [col[1] for col in result]
+    except Exception:
+        # If table doesn't exist or error, return empty list
+        return []
+
+
+def has_column(table_name, column_name):
+    """
+    Check if a table has a specific column.
+    Returns True if column exists, False otherwise.
+    """
+    try:
+        with current_app.app_context():
+            with db.engine.begin() as conn:
+                columns = get_table_columns(conn, table_name)
+                return column_name in columns
+    except Exception:
+        return False
 
 
 def ensure_schema_updates():
