@@ -91,8 +91,15 @@ def ingredients_master():
         category_filter = request.args.get('category', '')
         level_filter = request.args.get('level', '')
         # Filter by user_id, excluding NULL user_id records (old data)
-        products = Product.query.filter(Product.user_id == current_user.id).all()
-        secondary_items = HomemadeIngredient.query.filter(HomemadeIngredient.user_id == current_user.id).all()
+        # Handle case where user_id column might not exist yet
+        try:
+            products = Product.query.filter(Product.user_id == current_user.id).all()
+            secondary_items = HomemadeIngredient.query.filter(HomemadeIngredient.user_id == current_user.id).all()
+        except Exception as e:
+            # If user_id column doesn't exist, return empty lists
+            current_app.logger.warning(f'user_id column may not exist yet: {str(e)}')
+            products = []
+            secondary_items = []
 
         rows = []
         for p in products:
