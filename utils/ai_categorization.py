@@ -3,9 +3,15 @@ AI-powered product categorization utility
 Uses AI to automatically identify category and sub-category from product descriptions
 """
 import os
-from flask import current_app
-import requests
 import json
+from flask import current_app
+
+# Try to import requests, but don't fail if it's not installed
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
 
 
 # List of valid categories
@@ -37,10 +43,21 @@ def categorize_product_ai(description, supplier=None):
     Returns:
         tuple: (category, sub_category) or (None, None) if categorization fails
     """
+    # Check if requests library is available
+    if not REQUESTS_AVAILABLE:
+        try:
+            current_app.logger.warning('requests library not available, skipping AI categorization')
+        except:
+            pass  # If current_app is not available, just skip
+        return None, None
+    
     # Check if AI API is configured
     api_key = os.environ.get('OPENAI_API_KEY')
     if not api_key:
-        current_app.logger.debug('OpenAI API key not configured, skipping AI categorization')
+        try:
+            current_app.logger.debug('OpenAI API key not configured, skipping AI categorization')
+        except:
+            pass  # If current_app is not available, just skip
         return None, None
     
     try:
