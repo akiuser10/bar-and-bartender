@@ -101,19 +101,15 @@ def register():
                     flash(f'Database error. Please try again or contact administrator. Error: {str(e2)}')
                     return render_template('register.html')
             
-            # Send verification email (code is ONLY sent via email, never shown on page)
+            # Send verification email
             email_sent = send_verification_email(email, code)
             if email_sent:
                 flash('Verification code sent to your email. Please check your inbox (and spam folder).')
             else:
-                # If email not configured, log error but don't show code on page
-                current_app.logger.error(f'Email not configured - cannot send verification code to {email}')
-                flash('⚠️ Email service is not configured. Please contact administrator to complete registration.', 'error')
-                # Clean up the verification code since we can't send it
-                db.session.delete(verification)
-                db.session.commit()
-                session.clear()
-                return render_template('register.html')
+                # If email not configured, show code for development/testing
+                # In production, email should be configured
+                current_app.logger.warning(f'Email not configured - showing code for {email} (configure email for production)')
+                flash(f'⚠️ Email not configured. For testing, your verification code is: {code}', 'warning')
             
             return render_template('verify_email.html', email=email)
             
@@ -226,8 +222,8 @@ def resend_code():
             flash('New verification code sent to your email. Please check your inbox (and spam folder).')
         else:
             from flask import current_app
-            current_app.logger.error(f'Email not configured - cannot resend verification code to {email}')
-            flash('⚠️ Email service is not configured. Please contact administrator.', 'error')
+            current_app.logger.warning(f'Email not configured - showing code for {email} (configure email for production)')
+            flash(f'⚠️ Email not configured. For testing, your new verification code is: {code}', 'warning')
     except Exception as e:
         from flask import current_app
         current_app.logger.error(f'Error resending code: {str(e)}', exc_info=True)
