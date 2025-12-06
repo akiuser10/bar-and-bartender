@@ -4,6 +4,7 @@ Uses AI to automatically identify category and sub-category from product descrip
 """
 import os
 import json
+import time
 from flask import current_app
 
 # Try to import requests, but don't fail if it's not installed
@@ -12,6 +13,11 @@ try:
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
+
+# Rate limiting: track last API call time
+_last_api_call_time = 0
+_min_time_between_calls = 0.5  # Minimum 0.5 seconds between API calls (2 per second max)
+_quota_exceeded = False  # Track if we've hit quota limit
 
 
 # List of valid categories
@@ -43,6 +49,12 @@ def categorize_product_ai(description, supplier=None):
     Returns:
         tuple: (category, sub_category) or (None, None) if categorization fails
     """
+    global _last_api_call_time, _quota_exceeded
+    
+    # If we've already hit quota limit, skip immediately
+    if _quota_exceeded:
+        return None, None
+    
     # Check if requests library is available
     if not REQUESTS_AVAILABLE:
         try:
@@ -59,6 +71,13 @@ def categorize_product_ai(description, supplier=None):
         except:
             pass  # If current_app is not available, just skip
         return None, None
+    
+    # Rate limiting: ensure minimum time between API calls
+    current_time = time.time()
+    time_since_last_call = current_time - _last_api_call_time
+    if time_since_last_call < _min_time_between_calls:
+        time.sleep(_min_time_between_calls - time_since_last_call)
+    _last_api_call_time = time.time()
     
     try:
         # Prepare the prompt
@@ -104,6 +123,8 @@ Do not include any explanation, only the JSON object."""
         )
         
         if response.status_code == 200:
+            # Reset quota flag on successful call
+            _quota_exceeded = False
             result = response.json()
             content = result['choices'][0]['message']['content'].strip()
             
@@ -142,8 +163,19 @@ Do not include any explanation, only the JSON object."""
                 sub_category = 'Other'
             
             return category, sub_category
+        elif response.status_code == 429:
+            # Quota exceeded - set flag and stop trying
+            _quota_exceeded = True
+            try:
+                current_app.logger.warning('OpenAI API quota exceeded. AI categorization disabled for this session.')
+            except:
+                pass
+            return None, None
         else:
-            current_app.logger.warning(f'OpenAI API error: {response.status_code} - {response.text}')
+            try:
+                current_app.logger.warning(f'OpenAI API error: {response.status_code} - {response.text[:200]}')
+            except:
+                pass
             return None, None
             
     except json.JSONDecodeError as e:
