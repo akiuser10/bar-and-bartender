@@ -301,22 +301,23 @@ def delete_selected_ingredients():
                 item_id_int = int(item_id)
                 product = Product.query.filter(Product.id == item_id_int, Product.user_id == current_user.id).first()
                 if product:
-                    # Check if product is used in any recipes or secondary ingredients
-                    from models import RecipeIngredient, HomemadeIngredientItem
-                    recipe_usage = RecipeIngredient.query.filter(
-                        RecipeIngredient.ingredient_type == 'Product',
-                        RecipeIngredient.ingredient_id == item_id_int
-                    ).first()
-                    secondary_usage = HomemadeIngredientItem.query.filter(
-                        HomemadeIngredientItem.product_id == item_id_int
-                    ).first()
-                    
-                    if recipe_usage or secondary_usage:
-                        errors.append(f"{product.description} is used in recipes/secondary ingredients and cannot be deleted.")
+                    try:
+                        # Delete related recipe ingredients and secondary ingredient items first
+                        from models import RecipeIngredient, HomemadeIngredientItem
+                        RecipeIngredient.query.filter(
+                            RecipeIngredient.ingredient_type == 'Product',
+                            RecipeIngredient.ingredient_id == item_id_int
+                        ).delete()
+                        HomemadeIngredientItem.query.filter(
+                            HomemadeIngredientItem.product_id == item_id_int
+                        ).delete()
+                        
+                        db.session.delete(product)
+                        count += 1
+                    except Exception as delete_error:
+                        current_app.logger.error(f'Error deleting product {item_id_int} and its references: {str(delete_error)}', exc_info=True)
+                        errors.append(f"Error deleting {product.description}: {str(delete_error)}")
                         continue
-                    
-                    db.session.delete(product)
-                    count += 1
                 else:
                     current_app.logger.warning(f'Product {item_id_int} not found or does not belong to user {current_user.id}')
             except (ValueError, TypeError) as e:
