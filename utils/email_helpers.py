@@ -19,9 +19,22 @@ def send_verification_email(email, code):
     Returns True if successful, False otherwise
     """
     try:
+        # Check if mail extension is initialized
+        if not mail or not hasattr(mail, 'send'):
+            current_app.logger.warning('Mail extension not initialized')
+            return False
+        
         # Check if email is configured
-        if not current_app.config.get('MAIL_USERNAME') or not current_app.config.get('MAIL_PASSWORD'):
-            current_app.logger.warning('Email not configured - MAIL_USERNAME or MAIL_PASSWORD not set')
+        mail_username = current_app.config.get('MAIL_USERNAME')
+        mail_password = current_app.config.get('MAIL_PASSWORD')
+        
+        if not mail_username or not mail_password:
+            current_app.logger.warning(f'Email not configured - MAIL_USERNAME={bool(mail_username)}, MAIL_PASSWORD={bool(mail_password)}')
+            return False
+        
+        # Validate email format
+        if '@' not in email or '.' not in email.split('@')[1]:
+            current_app.logger.warning(f'Invalid email format: {email}')
             return False
         
         msg = Message(
@@ -62,5 +75,11 @@ Bar & Bartender Team
         current_app.logger.info(f'Verification email sent successfully to {email}')
         return True
     except Exception as e:
-        current_app.logger.error(f'Failed to send verification email to {email}: {str(e)}', exc_info=True)
+        error_msg = str(e)
+        current_app.logger.error(f'Failed to send verification email to {email}: {error_msg}', exc_info=True)
+        # Log more details about the error
+        if 'authentication' in error_msg.lower() or 'login' in error_msg.lower():
+            current_app.logger.error('Email authentication failed - check MAIL_USERNAME and MAIL_PASSWORD')
+        elif 'connection' in error_msg.lower() or 'timeout' in error_msg.lower():
+            current_app.logger.error('Email connection failed - check MAIL_SERVER and network')
         return False
