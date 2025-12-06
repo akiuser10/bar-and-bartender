@@ -101,9 +101,14 @@ def create_app(config_object='config.Config'):
     @app.errorhandler(500)
     def internal_error(error):
         from flask import render_template
+        import traceback
         db.session.rollback()
-        app.logger.error(f'Internal Server Error: {str(error)}', exc_info=True)
-        return render_template('error.html', error=str(error)), 500
+        error_msg = str(error)
+        # In development, show full traceback
+        if app.config.get('FLASK_ENV') == 'development' or app.config.get('DEBUG'):
+            error_msg = f"{error_msg}\n\nTraceback:\n{traceback.format_exc()}"
+        app.logger.error(f'Internal Server Error: {error_msg}', exc_info=True)
+        return render_template('error.html', error=error_msg), 500
     
     # Initialize database and run schema updates
     with app.app_context():
