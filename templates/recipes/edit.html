@@ -48,6 +48,31 @@
                     </div>
                 </div>
 
+                <div class="category-section">
+                    <div class="section-header">CATEGORY:</div>
+                    <div class="section-content">
+                        <select id="recipe-food-category" name="food_category" title="Category" class="section-select">
+                            <option value="">Select Category (optional)</option>
+                            <option value="Coffee" {% if recipe.food_category == 'Coffee' %}selected{% endif %}>Coffee</option>
+                            <option value="Tea" {% if recipe.food_category == 'Tea' %}selected{% endif %}>Tea</option>
+                            <option value="Pizza" {% if recipe.food_category == 'Pizza' %}selected{% endif %}>Pizza</option>
+                            <option value="Pasta" {% if recipe.food_category == 'Pasta' %}selected{% endif %}>Pasta</option>
+                            <option value="Dessert" {% if recipe.food_category == 'Dessert' %}selected{% endif %}>Dessert</option>
+                            <option value="Grill" {% if recipe.food_category == 'Grill' %}selected{% endif %}>Grill</option>
+                            <option value="Soups" {% if recipe.food_category == 'Soups' %}selected{% endif %}>Soups</option>
+                            <option value="Salad" {% if recipe.food_category == 'Salad' %}selected{% endif %}>Salad</option>
+                            <option value="Cold Cuts" {% if recipe.food_category == 'Cold Cuts' %}selected{% endif %}>Cold Cuts</option>
+                            <option value="Appetizers" {% if recipe.food_category == 'Appetizers' %}selected{% endif %}>Appetizers</option>
+                            <option value="Sides" {% if recipe.food_category == 'Sides' %}selected{% endif %}>Sides</option>
+                            <option value="Mains" {% if recipe.food_category == 'Mains' %}selected{% endif %}>Mains</option>
+                            <option value="Bread" {% if recipe.food_category == 'Bread' %}selected{% endif %}>Bread</option>
+                            <option value="Rice" {% if recipe.food_category == 'Rice' %}selected{% endif %}>Rice</option>
+                            <option value="Snacks or Finger Food" {% if recipe.food_category == 'Snacks or Finger Food' %}selected{% endif %}>Snacks or Finger Food</option>
+                            <option value="Fusion" {% if recipe.food_category == 'Fusion' %}selected{% endif %}>Fusion</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="recipe-details-section">
                     <div class="section-header">RECIPE DETAILS</div>
                     <div class="summary-box">

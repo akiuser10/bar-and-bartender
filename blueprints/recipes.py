@@ -285,6 +285,7 @@ def add_recipe(category):
                 
                 method = request.form.get('method', '')
                 garnish = request.form.get('garnish', '')
+                food_category = request.form.get('food_category', '')
                 item_level = request.form.get('item_level', 'Primary')
                 selling_price = float(request.form.get('selling_price', 0) or 0)
                 vat_percentage = float(request.form.get('vat_percentage', 0) or 0)
@@ -328,6 +329,7 @@ def add_recipe(category):
                     title=title,
                     method=method,
                     garnish=garnish,
+                    food_category=food_category,
                     recipe_type=recipe_type,
                     type=config['db_labels'][0],
                     item_level=item_level,
@@ -643,6 +645,7 @@ def edit_recipe(id):
                 recipe.item_level = request.form.get('item_level', recipe.item_level or 'Primary')
                 recipe.method = request.form.get('method', '')
                 recipe.garnish = request.form.get('garnish', '')
+                recipe.food_category = request.form.get('food_category', '')
                 recipe.selling_price = float(request.form.get('selling_price', recipe.selling_price or 0))
                 recipe.vat_percentage = float(request.form.get('vat_percentage', recipe.vat_percentage or 0))
                 recipe.service_charge_percentage = float(request.form.get('service_charge_percentage', recipe.service_charge_percentage or 0))

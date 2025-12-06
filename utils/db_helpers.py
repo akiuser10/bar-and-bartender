@@ -82,6 +82,11 @@ def ensure_schema_updates():
                         conn.execute(db.text("ALTER TABLE recipe ADD COLUMN garnish TEXT"))
                     except Exception:
                         pass
+                if 'food_category' not in recipe_columns:
+                    try:
+                        conn.execute(db.text("ALTER TABLE recipe ADD COLUMN food_category VARCHAR(50)"))
+                    except Exception:
+                        pass
 
                 # Product table updates
                 product_columns = get_table_columns(conn, 'product')
