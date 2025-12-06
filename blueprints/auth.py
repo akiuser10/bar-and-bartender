@@ -15,77 +15,97 @@ auth_bp = Blueprint('auth', __name__)
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        # Initial registration step - collect user info and send code
-        username = request.form['username']
-        email = request.form['email']
-        password = request.form['password']
-
-        # Validate email format
-        if '@' not in email or '.' not in email.split('@')[1]:
-            flash('Please enter a valid email address.')
-            return render_template('register.html')
-
-        # Check if email already registered
-        if User.query.filter_by(email=email).first():
-            flash('Email already registered. Please log in instead.')
-            return redirect(url_for('auth.login'))
-
-        # Check if username already taken
-        if User.query.filter_by(username=username).first():
-            flash('Username already taken. Please choose another.')
-            return render_template('register.html')
-
-        # Generate verification code
-        code = generate_verification_code()
-        
-        # Store registration data in session temporarily
-        session['reg_username'] = username
-        session['reg_email'] = email
-        session['reg_password'] = generate_password_hash(password)
-        
-        # Delete any existing verification codes for this email
         try:
-            VerificationCode.query.filter_by(email=email).delete()
-        except Exception as e:
-            # Table might not exist yet - will be created on first use
+            # Initial registration step - collect user info and send code
+            username = request.form.get('username', '').strip()
+            email = request.form.get('email', '').strip()
+            password = request.form.get('password', '')
+
+            # Validate inputs
+            if not username or not email or not password:
+                flash('Please fill in all fields.')
+                return render_template('register.html')
+
+            # Validate email format
+            if '@' not in email or '.' not in email.split('@')[1]:
+                flash('Please enter a valid email address.')
+                return render_template('register.html')
+
+            # Check if email already registered
+            if User.query.filter_by(email=email).first():
+                flash('Email already registered. Please log in instead.')
+                return redirect(url_for('auth.login'))
+
+            # Check if username already taken
+            if User.query.filter_by(username=username).first():
+                flash('Username already taken. Please choose another.')
+                return render_template('register.html')
+
+            # Generate verification code
+            code = generate_verification_code()
+            
+            # Store registration data in session temporarily
+            session['reg_username'] = username
+            session['reg_email'] = email
+            session['reg_password'] = generate_password_hash(password)
+            
+            # Ensure VerificationCode table exists
             from flask import current_app
-            current_app.logger.warning(f'Could not delete old verification codes: {str(e)}')
-        
-        # Create new verification code record
-        try:
-            verification = VerificationCode(
-                email=email,
-                code=code,
-                username=username,
-                password_hash=session['reg_password'],
-                expires_at=datetime.utcnow() + timedelta(minutes=10)
-            )
-            db.session.add(verification)
-            db.session.commit()
-        except Exception as e:
-            # If table doesn't exist, create it
-            from flask import current_app
-            current_app.logger.error(f'Database error creating verification code: {str(e)}')
             try:
-                db.create_all()  # Create all tables including VerificationCode
+                # Try to create all tables if they don't exist
+                db.create_all()
+            except Exception as e:
+                current_app.logger.warning(f'Table creation check: {str(e)}')
+            
+            # Delete any existing verification codes for this email
+            try:
+                VerificationCode.query.filter_by(email=email).delete()
+                db.session.commit()
+            except Exception as e:
+                current_app.logger.warning(f'Could not delete old verification codes: {str(e)}')
+                db.session.rollback()
+            
+            # Create new verification code record
+            try:
+                verification = VerificationCode(
+                    email=email,
+                    code=code,
+                    username=username,
+                    password_hash=session['reg_password'],
+                    expires_at=datetime.utcnow() + timedelta(minutes=10)
+                )
                 db.session.add(verification)
                 db.session.commit()
-            except Exception as e2:
+            except Exception as e:
+                current_app.logger.error(f'Database error creating verification code: {str(e)}', exc_info=True)
                 db.session.rollback()
-                flash(f'Database error: {str(e2)}. Please contact administrator.')
-                return render_template('register.html')
-        
-        # Send verification email
-        email_sent = send_verification_email(email, code)
-        if email_sent:
-            flash('Verification code sent to your email. Please check your inbox.')
-        else:
-            # If email not configured, show code in flash message for development/testing
+                # Try creating table again and retry
+                try:
+                    db.create_all()
+                    db.session.add(verification)
+                    db.session.commit()
+                except Exception as e2:
+                    db.session.rollback()
+                    current_app.logger.error(f'Failed to create verification code after retry: {str(e2)}', exc_info=True)
+                    flash(f'Database error. Please try again or contact administrator. Error: {str(e2)}')
+                    return render_template('register.html')
+            
+            # Send verification email
+            email_sent = send_verification_email(email, code)
+            if email_sent:
+                flash('Verification code sent to your email. Please check your inbox.')
+            else:
+                # If email not configured, show code in flash message for development/testing
+                current_app.logger.warning(f'Email not configured - showing code in flash message for {email}')
+                flash(f'⚠️ Email not configured. Your verification code is: {code} (Configure email settings for production)', 'warning')
+            
+            return render_template('verify_email.html', email=email)
+            
+        except Exception as e:
             from flask import current_app
-            current_app.logger.warning(f'Email not configured - showing code in flash message for {email}')
-            flash(f'⚠️ Email not configured. Your verification code is: {code} (Configure email settings for production)', 'warning')
-        
-        return render_template('verify_email.html', email=email)
+            current_app.logger.error(f'Registration error: {str(e)}', exc_info=True)
+            flash(f'An error occurred during registration: {str(e)}. Please try again.')
+            return render_template('register.html')
 
     return render_template('register.html')
 
