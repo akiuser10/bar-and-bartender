@@ -19,7 +19,7 @@ def secondary_ingredients():
     try:
         # Eagerly load ingredients and their products to ensure cost calculation works
         from sqlalchemy.orm import joinedload
-        secondary_items = HomemadeIngredient.query.options(
+        secondary_items = HomemadeIngredient.query.filter_by(user_id=current_user.id).options(
             joinedload(HomemadeIngredient.ingredients).joinedload(HomemadeIngredientItem.product)
         ).all()
         
@@ -94,7 +94,7 @@ def secondary_ingredients():
 def view_secondary_ingredient(id):
     ensure_schema_updates()
     from sqlalchemy.orm import joinedload
-    secondary = HomemadeIngredient.query.options(
+    secondary = HomemadeIngredient.query.filter_by(user_id=current_user.id).options(
         joinedload(HomemadeIngredient.ingredients).joinedload(HomemadeIngredientItem.product)
     ).get_or_404(id)
     # Ensure ingredients and products are loaded
@@ -108,8 +108,8 @@ def view_secondary_ingredient(id):
 @login_required
 def add_secondary_ingredient():
     ensure_schema_updates()
-    products = Product.query.order_by(Product.description).all()
-    existing_secondary = HomemadeIngredient.query.order_by(HomemadeIngredient.name).all()
+    products = Product.query.filter_by(user_id=current_user.id).order_by(Product.description).all()
+    existing_secondary = HomemadeIngredient.query.filter_by(user_id=current_user.id).order_by(HomemadeIngredient.name).all()
     ingredient_options = [
         {
             'label': f"{p.description} ({p.barbuddy_code})",
@@ -158,11 +158,12 @@ def add_secondary_ingredient():
                 flash('Total volume must be greater than zero.')
                 return redirect(url_for('secondary.add_secondary_ingredient'))
 
-            max_id = db.session.query(db.func.max(HomemadeIngredient.id)).scalar() or 0
+            # Get max ID for this user only
+            max_id = db.session.query(db.func.max(HomemadeIngredient.id)).filter_by(user_id=current_user.id).scalar() or 0
             counter = 1
             while True:
                 unique_code = f"SEC-{max_id + counter:04d}"
-                existing = HomemadeIngredient.query.filter_by(unique_code=unique_code).first()
+                existing = HomemadeIngredient.query.filter_by(user_id=current_user.id, unique_code=unique_code).first()
                 if not existing:
                     break
                 counter += 1
@@ -171,6 +172,7 @@ def add_secondary_ingredient():
                     break
 
             homemade = HomemadeIngredient(
+                user_id=current_user.id,
                 name=name,
                 unique_code=unique_code,
                 total_volume_ml=total_volume_ml,
@@ -231,7 +233,7 @@ def add_secondary_ingredient():
             for option, qty, unit_item in matched:
                 try:
                     if option['type'] == 'Secondary':
-                        source_secondary = HomemadeIngredient.query.get(option['id'])
+                        source_secondary = HomemadeIngredient.query.filter_by(id=option['id'], user_id=current_user.id).first()
                         if not source_secondary or not source_secondary.total_volume_ml or source_secondary.total_volume_ml <= 0:
                             continue
                         factor = qty / source_secondary.total_volume_ml
@@ -255,7 +257,7 @@ def add_secondary_ingredient():
                             )
                             db.session.add(item)
                     else:
-                        product = Product.query.get(option['id'])
+                        product = Product.query.filter_by(id=option['id'], user_id=current_user.id).first()
                         if not product:
                             continue
                         quantity_ml_value = qty
@@ -294,15 +296,15 @@ def add_secondary_ingredient():
 def edit_secondary_ingredient(id):
     ensure_schema_updates()
     from sqlalchemy.orm import joinedload
-    secondary = HomemadeIngredient.query.options(
+    secondary = HomemadeIngredient.query.filter_by(user_id=current_user.id).options(
         joinedload(HomemadeIngredient.ingredients).joinedload(HomemadeIngredientItem.product)
     ).get_or_404(id)
     # Ensure ingredients and products are loaded
     _ = secondary.ingredients
     for item in secondary.ingredients:
         _ = item.product
-    products = Product.query.order_by(Product.description).all()
-    existing_secondary = HomemadeIngredient.query.filter(HomemadeIngredient.id != id).order_by(HomemadeIngredient.name).all()
+    products = Product.query.filter_by(user_id=current_user.id).order_by(Product.description).all()
+    existing_secondary = HomemadeIngredient.query.filter_by(user_id=current_user.id).filter(HomemadeIngredient.id != id).order_by(HomemadeIngredient.name).all()
 
     ingredient_options = [
         {
@@ -417,7 +419,7 @@ def edit_secondary_ingredient(id):
             for option, qty, unit_item in matched:
                 try:
                     if option['type'] == 'Secondary':
-                        source_secondary = HomemadeIngredient.query.get(option['id'])
+                        source_secondary = HomemadeIngredient.query.filter_by(id=option['id'], user_id=current_user.id).first()
                         if not source_secondary or not source_secondary.total_volume_ml or source_secondary.total_volume_ml <= 0:
                             current_app.logger.warning(f"Invalid secondary ingredient source: {option['id']}")
                             continue
@@ -443,7 +445,7 @@ def edit_secondary_ingredient(id):
                             db.session.add(item)
                             items_added += 1
                     else:
-                        product = Product.query.get(option['id'])
+                        product = Product.query.filter_by(id=option['id'], user_id=current_user.id).first()
                         if not product:
                             current_app.logger.warning(f"Product not found: {option['id']}")
                             continue
@@ -504,7 +506,7 @@ def edit_secondary_ingredient(id):
 @secondary_bp.route('/secondary-ingredients/<int:id>/delete', methods=['POST'])
 @login_required
 def delete_secondary_ingredient(id):
-    secondary = HomemadeIngredient.query.get_or_404(id)
+    secondary = HomemadeIngredient.query.filter_by(id=id, user_id=current_user.id).first_or_404()
     db.session.delete(secondary)
     db.session.commit()
     flash('Secondary ingredient deleted successfully!')
@@ -515,7 +517,7 @@ def delete_secondary_ingredient(id):
 @login_required
 def link_ingredient_to_secondary(id):
     """Link a product/ingredient to a secondary ingredient via web interface"""
-    secondary = HomemadeIngredient.query.get_or_404(id)
+    secondary = HomemadeIngredient.query.filter_by(id=id, user_id=current_user.id).first_or_404()
     
     if request.method == 'POST':
         try:
@@ -527,7 +529,7 @@ def link_ingredient_to_secondary(id):
                 flash('Please provide a valid product and quantity.')
                 return redirect(url_for('secondary.link_ingredient_to_secondary', id=id))
             
-            product = Product.query.get(product_id)
+            product = Product.query.filter_by(id=product_id, user_id=current_user.id).first()
             if not product:
                 flash('Product not found.')
                 return redirect(url_for('secondary.link_ingredient_to_secondary', id=id))
@@ -563,7 +565,7 @@ def link_ingredient_to_secondary(id):
             return redirect(url_for('secondary.link_ingredient_to_secondary', id=id))
     
     # GET request - show form
-    products = Product.query.order_by(Product.description).all()
+    products = Product.query.filter_by(user_id=current_user.id).order_by(Product.description).all()
     existing_items = HomemadeIngredientItem.query.filter_by(homemade_id=id).all()
     
     return render_template('secondary_ingredients/link_ingredient.html', 

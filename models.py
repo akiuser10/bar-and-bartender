@@ -36,9 +36,11 @@ class VerificationCode(db.Model):
 # -------------------------
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    unique_item_number = db.Column(db.String(50), unique=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref='products')
+    unique_item_number = db.Column(db.String(50))
     supplier = db.Column(db.String(120))
-    barbuddy_code = db.Column(db.String(20), unique=True, nullable=False)
+    barbuddy_code = db.Column(db.String(20), nullable=False)
     description = db.Column(db.String(200), nullable=False)
     category = db.Column(db.String(50))
     sub_category = db.Column(db.String(50))
@@ -52,6 +54,9 @@ class Product(db.Model):
     bottles_per_case = db.Column(db.Integer, default=1)
     case_cost = db.Column(db.Float, default=0.0)
     image_path = db.Column(db.String(255))
+    
+    # Add unique constraint on user_id + barbuddy_code combination
+    __table_args__ = (db.UniqueConstraint('user_id', 'barbuddy_code', name='_user_barbuddy_code_uc'),)
 
     def calculate_case_cost(self):
         if self.purchase_type == "case":
@@ -63,15 +68,20 @@ class Product(db.Model):
 # -------------------------
 class HomemadeIngredient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref='homemade_ingredients')
     name = db.Column(db.String(150), nullable=False)
-    unique_code = db.Column(db.String(50), unique=True)
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
-    creator = db.relationship('User')
+    unique_code = db.Column(db.String(50))
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # Keep for backward compatibility
+    creator = db.relationship('User', foreign_keys=[created_by])
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     total_volume_ml = db.Column(db.Float, nullable=False)
     unit = db.Column(db.String(20), default="ml")
     method = db.Column(db.Text)
     ingredients = db.relationship('HomemadeIngredientItem', backref='homemade', cascade='all, delete-orphan')
+    
+    # Add unique constraint on user_id + unique_code combination
+    __table_args__ = (db.UniqueConstraint('user_id', 'unique_code', name='_user_unique_code_uc'),)
 
     def calculate_cost(self):
         return round(sum(i.calculate_cost() for i in self.ingredients), 2)
@@ -253,18 +263,31 @@ class RecipeIngredient(db.Model):
     product_id = db.Column(db.Integer)
 
     def get_product(self):
-        """Get the ingredient (Product, HomemadeIngredient, or Recipe)"""
+        """Get the ingredient (Product, HomemadeIngredient, or Recipe) - filtered by recipe's user"""
+        # Get user_id from the recipe this ingredient belongs to
+        user_id = self.recipe.user_id if self.recipe else None
+        
         if self.ingredient_type:
             if self.ingredient_type == "Product":
+                if user_id:
+                    return Product.query.filter_by(id=self.ingredient_id, user_id=user_id).first()
                 return Product.query.get(self.ingredient_id)
             elif self.ingredient_type == "Homemade":
+                if user_id:
+                    return HomemadeIngredient.query.filter_by(id=self.ingredient_id, user_id=user_id).first()
                 return HomemadeIngredient.query.get(self.ingredient_id)
             elif self.ingredient_type == "Recipe":
+                if user_id:
+                    return Recipe.query.filter_by(id=self.ingredient_id, user_id=user_id).first()
                 return Recipe.query.get(self.ingredient_id)
         elif self.product_type:
             if self.product_type == "Product":
+                if user_id:
+                    return Product.query.filter_by(id=self.product_id, user_id=user_id).first()
                 return Product.query.get(self.product_id)
             else:
+                if user_id:
+                    return HomemadeIngredient.query.filter_by(id=self.product_id, user_id=user_id).first()
                 return HomemadeIngredient.query.get(self.product_id)
         return None
     

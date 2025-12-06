@@ -20,7 +20,7 @@ def recipes_list():
     try:
         from sqlalchemy.orm import joinedload
         # Eagerly load ingredients to avoid N+1 queries and ensure cost calculation works
-        recipes = Recipe.query.options(
+        recipes = Recipe.query.filter_by(user_id=current_user.id).options(
             joinedload(Recipe.ingredients)
         ).all()
         
@@ -79,7 +79,7 @@ def recipe_list(category):
         from sqlalchemy import or_, and_
         # Prioritize type field over recipe_type since recipe_type is generic ('Beverage')
         # and type field has specific values ('Beverages', 'Mocktails', 'Cocktails')
-        recipes = Recipe.query.options(
+        recipes = Recipe.query.filter_by(user_id=current_user.id).options(
             joinedload(Recipe.ingredients)
         ).filter(
             or_(
@@ -119,10 +119,10 @@ def view_recipe_by_code(code):
         if code.startswith('REC-'):
             from sqlalchemy.orm import joinedload
             # First check if this is a valid recipe code
-            recipe = Recipe.query.filter_by(recipe_code=code).first()
+            recipe = Recipe.query.filter_by(user_id=current_user.id, recipe_code=code).first()
             if recipe:
                 # Reload with eager loading
-                recipe = Recipe.query.options(
+                recipe = Recipe.query.filter_by(user_id=current_user.id).options(
                     joinedload(Recipe.ingredients)
                 ).filter_by(recipe_code=code).first()
                 
@@ -235,12 +235,13 @@ def add_recipe(category):
                 service_charge_percentage = float(request.form.get('service_charge_percentage', 0) or 0)
                 government_fees_percentage = float(request.form.get('government_fees_percentage', 0) or 0)
                 
-                # Generate unique recipe code
+                # Generate unique recipe code (per user)
                 max_attempts = 100
                 recipe_code = None
+                user_recipe_count = Recipe.query.filter_by(user_id=current_user.id).count()
                 for attempt in range(max_attempts):
-                    candidate_code = f"REC-{Recipe.query.count() + attempt + 1:04d}"
-                    existing = Recipe.query.filter_by(recipe_code=candidate_code).first()
+                    candidate_code = f"REC-{user_recipe_count + attempt + 1:04d}"
+                    existing = Recipe.query.filter_by(user_id=current_user.id, recipe_code=candidate_code).first()
                     if not existing:
                         recipe_code = candidate_code
                         break
@@ -335,11 +336,11 @@ def add_recipe(category):
                             db_product_id = ing_id_int
                         else:
                             # Try to determine from ID
-                            if Product.query.get(ing_id_int):
+                            if Product.query.filter_by(id=ing_id_int, user_id=current_user.id).first():
                                 db_ingredient_type = 'Product'
                                 db_product_type = 'Product'
                                 db_product_id = ing_id_int
-                            elif HomemadeIngredient.query.get(ing_id_int):
+                            elif HomemadeIngredient.query.filter_by(id=ing_id_int, user_id=current_user.id).first():
                                 db_ingredient_type = 'Homemade'
                                 db_product_type = 'Homemade'
                                 db_product_id = ing_id_int
@@ -356,7 +357,7 @@ def add_recipe(category):
                         if unit and unit != 'ml':
                             # Try to convert if we have the product info
                             if db_ingredient_type == 'Product':
-                                product = Product.query.get(ing_id_int)
+                                product = Product.query.filter_by(id=ing_id_int, user_id=current_user.id).first()
                                 if product and product.ml_in_bottle and product.ml_in_bottle > 0:
                                     # Assume unit is in bottles/containers
                                     quantity_ml = qty * product.ml_in_bottle
@@ -436,7 +437,7 @@ def add_recipe(category):
 def view_recipe(id):
     try:
         from sqlalchemy.orm import joinedload
-        recipe = Recipe.query.options(
+        recipe = Recipe.query.filter_by(user_id=current_user.id).options(
             joinedload(Recipe.ingredients)
         ).get_or_404(id)
         
@@ -482,7 +483,7 @@ def edit_recipe(id):
     ensure_schema_updates()
     try:
         from sqlalchemy.orm import joinedload
-        recipe = Recipe.query.options(
+        recipe = Recipe.query.filter_by(user_id=current_user.id).options(
             joinedload(Recipe.ingredients)
         ).get_or_404(id)
         
@@ -582,9 +583,9 @@ def edit_recipe(id):
                         db_ingredient_type = ing_type
                     else:
                         # Best-effort detection
-                        if Product.query.get(ing_id_int):
+                        if Product.query.filter_by(id=ing_id_int, user_id=current_user.id).first():
                             db_ingredient_type = 'Product'
-                        elif HomemadeIngredient.query.get(ing_id_int):
+                        elif HomemadeIngredient.query.filter_by(id=ing_id_int, user_id=current_user.id).first():
                             db_ingredient_type = 'Homemade'
                         else:
                             db_ingredient_type = 'Recipe'
@@ -596,7 +597,7 @@ def edit_recipe(id):
                     quantity_ml = qty
                     if unit and unit != 'ml':
                         if db_ingredient_type == 'Product':
-                            prod = Product.query.get(ing_id_int)
+                            prod = Product.query.filter_by(id=ing_id_int, user_id=current_user.id).first()
                             if prod and prod.ml_in_bottle and prod.ml_in_bottle > 0:
                                 quantity_ml = qty * prod.ml_in_bottle
                         # For Homemade/Recipe, treat qty as ml/serving
@@ -637,19 +638,19 @@ def edit_recipe(id):
             description = ''
             code = ''
             if ing_type == 'Product':
-                product = Product.query.get(ingredient.ingredient_id)
+                product = Product.query.filter_by(id=ingredient.ingredient_id, user_id=current_user.id).first()
                 if product:
                     description = product.description or ''
                     code = product.barbuddy_code or ''
                     label = f"{description} ({code})" if code else description
             elif ing_type == 'Secondary':
-                sec = HomemadeIngredient.query.get(ingredient.ingredient_id)
+                sec = HomemadeIngredient.query.filter_by(id=ingredient.ingredient_id, user_id=current_user.id).first()
                 if sec and sec.unique_code:
                     description = sec.name or ''
                     code = sec.unique_code or ''
                     label = f"{description} ({code})" if code else description
             elif ing_type == 'Recipe':
-                rec = Recipe.query.get(ingredient.ingredient_id)
+                rec = Recipe.query.filter_by(id=ingredient.ingredient_id, user_id=current_user.id).first()
                 if rec and rec.recipe_code:
                     description = rec.title or ''
                     code = rec.recipe_code or ''
@@ -684,7 +685,7 @@ def edit_recipe(id):
 @recipes_bp.route('/recipes/<int:id>/delete', methods=['POST'])
 @login_required
 def delete_recipe(id):
-    recipe = Recipe.query.get_or_404(id)
+    recipe = Recipe.query.filter_by(id=id, user_id=current_user.id).first_or_404()
     db.session.delete(recipe)
     db.session.commit()
     flash('Recipe deleted successfully!')
