@@ -161,40 +161,60 @@ def ensure_schema_updates():
                         current_app.logger.warning(f'Could not add user_id to homemade_ingredient: {str(e)}')
                         pass  # Column might already exist
                 
-                # Drop old global unique constraint on unique_item_number if it exists
-                # Replace with user-scoped constraint (user_id, unique_item_number)
+                # Drop old global unique constraints and replace with user-scoped constraints
                 db_url = str(db.engine.url)
                 if 'postgresql' in db_url or 'postgres' in db_url:
                     try:
-                        # Check if old constraint exists
+                        # Drop old global unique constraint on unique_item_number if it exists
                         constraint_check = conn.execute(db.text(
                             "SELECT constraint_name FROM information_schema.table_constraints "
                             "WHERE table_name = 'product' AND constraint_name = 'product_unique_item_number_key'"
                         ))
                         if constraint_check.fetchone():
-                            # Drop the old global constraint
                             conn.execute(db.text("ALTER TABLE product DROP CONSTRAINT IF EXISTS product_unique_item_number_key"))
                             current_app.logger.info('Dropped old global unique constraint on unique_item_number')
-                            
-                            # Add new user-scoped unique constraint (only if user_id column exists)
-                            if 'user_id' in product_columns:
-                                try:
-                                    # Check if new constraint already exists
-                                    new_constraint_check = conn.execute(db.text(
-                                        "SELECT constraint_name FROM information_schema.table_constraints "
-                                        "WHERE table_name = 'product' AND constraint_name = 'product_user_unique_item_number_key'"
+                        
+                        # Drop old global unique constraint on barbuddy_code if it exists
+                        barbuddy_constraint_check = conn.execute(db.text(
+                            "SELECT constraint_name FROM information_schema.table_constraints "
+                            "WHERE table_name = 'product' AND constraint_name = 'product_barbuddy_code_key'"
+                        ))
+                        if barbuddy_constraint_check.fetchone():
+                            conn.execute(db.text("ALTER TABLE product DROP CONSTRAINT IF EXISTS product_barbuddy_code_key"))
+                            current_app.logger.info('Dropped old global unique constraint on barbuddy_code')
+                        
+                        # Add new user-scoped unique constraints (only if user_id column exists)
+                        if 'user_id' in product_columns:
+                            try:
+                                # Check if new constraint for unique_item_number already exists
+                                new_constraint_check = conn.execute(db.text(
+                                    "SELECT indexname FROM pg_indexes "
+                                    "WHERE tablename = 'product' AND indexname = 'product_user_unique_item_number_key'"
+                                ))
+                                if not new_constraint_check.fetchone():
+                                    # Create unique constraint on (user_id, unique_item_number)
+                                    conn.execute(db.text(
+                                        "CREATE UNIQUE INDEX IF NOT EXISTS product_user_unique_item_number_key "
+                                        "ON product (user_id, unique_item_number) "
+                                        "WHERE user_id IS NOT NULL AND unique_item_number IS NOT NULL"
                                     ))
-                                    if not new_constraint_check.fetchone():
-                                        # Create unique constraint on (user_id, unique_item_number)
-                                        # Only apply to rows where both are NOT NULL
-                                        conn.execute(db.text(
-                                            "CREATE UNIQUE INDEX product_user_unique_item_number_key "
-                                            "ON product (user_id, unique_item_number) "
-                                            "WHERE user_id IS NOT NULL AND unique_item_number IS NOT NULL"
-                                        ))
-                                        current_app.logger.info('Created user-scoped unique constraint on (user_id, unique_item_number)')
-                                except Exception as e:
-                                    current_app.logger.warning(f'Could not create user-scoped constraint: {str(e)}')
+                                    current_app.logger.info('Created user-scoped unique constraint on (user_id, unique_item_number)')
+                                
+                                # Check if new constraint for barbuddy_code already exists
+                                barbuddy_index_check = conn.execute(db.text(
+                                    "SELECT indexname FROM pg_indexes "
+                                    "WHERE tablename = 'product' AND indexname = 'product_user_barbuddy_code_key'"
+                                ))
+                                if not barbuddy_index_check.fetchone():
+                                    # Create unique constraint on (user_id, barbuddy_code)
+                                    conn.execute(db.text(
+                                        "CREATE UNIQUE INDEX IF NOT EXISTS product_user_barbuddy_code_key "
+                                        "ON product (user_id, barbuddy_code) "
+                                        "WHERE user_id IS NOT NULL AND barbuddy_code IS NOT NULL"
+                                    ))
+                                    current_app.logger.info('Created user-scoped unique constraint on (user_id, barbuddy_code)')
+                            except Exception as e:
+                                current_app.logger.warning(f'Could not create user-scoped constraints: {str(e)}')
                     except Exception as e:
                         current_app.logger.warning(f'Could not update unique constraints: {str(e)}')
     except Exception as e:
