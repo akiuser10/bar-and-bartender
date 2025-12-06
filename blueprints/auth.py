@@ -101,14 +101,19 @@ def register():
                     flash(f'Database error. Please try again or contact administrator. Error: {str(e2)}')
                     return render_template('register.html')
             
-            # Send verification email
+            # Send verification email (code is ONLY sent via email, never shown on page)
             email_sent = send_verification_email(email, code)
             if email_sent:
-                flash('Verification code sent to your email. Please check your inbox.')
+                flash('Verification code sent to your email. Please check your inbox (and spam folder).')
             else:
-                # If email not configured, show code in flash message for development/testing
-                current_app.logger.warning(f'Email not configured - showing code in flash message for {email}')
-                flash(f'⚠️ Email not configured. Your verification code is: {code} (Configure email settings for production)', 'warning')
+                # If email not configured, log error but don't show code on page
+                current_app.logger.error(f'Email not configured - cannot send verification code to {email}')
+                flash('⚠️ Email service is not configured. Please contact administrator to complete registration.', 'error')
+                # Clean up the verification code since we can't send it
+                db.session.delete(verification)
+                db.session.commit()
+                session.clear()
+                return render_template('register.html')
             
             return render_template('verify_email.html', email=email)
             
