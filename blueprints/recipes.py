@@ -121,11 +121,10 @@ def recipe_list(category):
                 current_app.logger.warning(f"Error loading ingredients for recipe {recipe.id}: {str(recipe_e)}")
         
         return render_template(
-            config['template'],
+            'recipes/list.html',
             recipes=recipes,
-            category=config['display'],
-            category_slug=canonical,
-            add_label=config['add_label']
+            selected_type='',
+            selected_category=canonical
         )
     except Exception as e:
         current_app.logger.error(f"Error in recipe_list: {str(e)}", exc_info=True)

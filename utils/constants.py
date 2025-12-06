@@ -5,25 +5,25 @@ CATEGORY_CONFIG = {
     'cocktails': {
         'display': 'Cocktails',
         'db_labels': ['Cocktails', 'Classic'],
-        'template': 'recipes/recipes_classic.html',
-        'add_label': 'Cocktail'
+        'template': 'recipes/list.html',
+        'add_label': 'Beverage'
     },
     'mocktails': {
         'display': 'Mocktails',
         'db_labels': ['Mocktails', 'Signature'],
-        'template': 'recipes/recipes_mocktail.html',
-        'add_label': 'Mocktail'
+        'template': 'recipes/list.html',
+        'add_label': 'Beverage'
     },
     'beverages': {
         'display': 'Beverages',
         'db_labels': ['Beverages', 'Beverage'],
-        'template': 'recipes/recipes_beverages.html',
+        'template': 'recipes/list.html',
         'add_label': 'Beverage'
     },
     'food': {
         'display': 'Food',
         'db_labels': ['Food'],
-        'template': 'recipes/add_recipe.html',
+        'template': 'recipes/list.html',
         'add_label': 'Food'
     }
 }
