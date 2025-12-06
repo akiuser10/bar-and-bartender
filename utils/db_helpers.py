@@ -160,6 +160,43 @@ def ensure_schema_updates():
                     except Exception as e:
                         current_app.logger.warning(f'Could not add user_id to homemade_ingredient: {str(e)}')
                         pass  # Column might already exist
+                
+                # Drop old global unique constraint on unique_item_number if it exists
+                # Replace with user-scoped constraint (user_id, unique_item_number)
+                db_url = str(db.engine.url)
+                if 'postgresql' in db_url or 'postgres' in db_url:
+                    try:
+                        # Check if old constraint exists
+                        constraint_check = conn.execute(db.text(
+                            "SELECT constraint_name FROM information_schema.table_constraints "
+                            "WHERE table_name = 'product' AND constraint_name = 'product_unique_item_number_key'"
+                        ))
+                        if constraint_check.fetchone():
+                            # Drop the old global constraint
+                            conn.execute(db.text("ALTER TABLE product DROP CONSTRAINT IF EXISTS product_unique_item_number_key"))
+                            current_app.logger.info('Dropped old global unique constraint on unique_item_number')
+                            
+                            # Add new user-scoped unique constraint (only if user_id column exists)
+                            if 'user_id' in product_columns:
+                                try:
+                                    # Check if new constraint already exists
+                                    new_constraint_check = conn.execute(db.text(
+                                        "SELECT constraint_name FROM information_schema.table_constraints "
+                                        "WHERE table_name = 'product' AND constraint_name = 'product_user_unique_item_number_key'"
+                                    ))
+                                    if not new_constraint_check.fetchone():
+                                        # Create unique constraint on (user_id, unique_item_number)
+                                        # Only apply to rows where both are NOT NULL
+                                        conn.execute(db.text(
+                                            "CREATE UNIQUE INDEX product_user_unique_item_number_key "
+                                            "ON product (user_id, unique_item_number) "
+                                            "WHERE user_id IS NOT NULL AND unique_item_number IS NOT NULL"
+                                        ))
+                                        current_app.logger.info('Created user-scoped unique constraint on (user_id, unique_item_number)')
+                                except Exception as e:
+                                    current_app.logger.warning(f'Could not create user-scoped constraint: {str(e)}')
+                    except Exception as e:
+                        current_app.logger.warning(f'Could not update unique constraints: {str(e)}')
     except Exception as e:
         # Log error but don't crash - schema updates are best effort
         current_app.logger.warning(f'Schema update warning: {str(e)}')
