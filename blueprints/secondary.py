@@ -304,7 +304,7 @@ def edit_secondary_ingredient(id):
     for item in secondary.ingredients:
         _ = item.product
     products = Product.query.filter(Product.user_id == current_user.id).order_by(Product.description).all()
-    existing_secondary = HomemadeIngredient.query.filter_by(user_id=current_user.id).filter(HomemadeIngredient.id != id).order_by(HomemadeIngredient.name).all()
+    existing_secondary = HomemadeIngredient.query.filter(HomemadeIngredient.user_id == current_user.id, HomemadeIngredient.id != id).order_by(HomemadeIngredient.name).all()
 
     ingredient_options = [
         {
