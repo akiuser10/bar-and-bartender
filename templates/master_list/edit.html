@@ -61,12 +61,20 @@
                     <option value="Tequila" {% if product.sub_category == 'Tequila' %}selected{% endif %}>Tequila</option>
                     <option value="Non Alcohol" {% if product.sub_category == 'Non Alcohol' %}selected{% endif %}>Non Alcohol</option>
                     <option value="Non-Alcohol" {% if product.sub_category == 'Non-Alcohol' %}selected{% endif %}>Non-Alcohol</option>
+                    <option value="Non-Alcoholic Spirit" {% if product.sub_category == 'Non-Alcoholic Spirit' %}selected{% endif %}>Non-Alcoholic Spirit</option>
+                    <option value="Non Alcoholic Beer" {% if product.sub_category == 'Non Alcoholic Beer' %}selected{% endif %}>Non Alcoholic Beer</option>
+                    <option value="Non-Alcoholic Wine" {% if product.sub_category == 'Non-Alcoholic Wine' or product.sub_category == 'Non_Alcoholic Wine' %}selected{% endif %}>Non-Alcoholic Wine</option>
                     <option value="Fruits" {% if product.sub_category == 'Fruits' %}selected{% endif %}>Fruits</option>
+                    <option value="Fresh Berries" {% if product.sub_category == 'Fresh Berries' %}selected{% endif %}>Fresh Berries</option>
+                    <option value="Frozen Berries" {% if product.sub_category == 'Frozen Berries' or product.sub_category == 'Frozon Berries' %}selected{% endif %}>Frozen Berries</option>
                     <option value="Vegetables" {% if product.sub_category == 'Vegetables' %}selected{% endif %}>Vegetables</option>
+                    <option value="Herbs" {% if product.sub_category == 'Herbs' %}selected{% endif %}>Herbs</option>
+                    <option value="Spice" {% if product.sub_category == 'Spice' %}selected{% endif %}>Spice</option>
                     <option value="Dairy" {% if product.sub_category == 'Dairy' %}selected{% endif %}>Dairy</option>
                     <option value="Syrups & Purees" {% if product.sub_category == 'Syrups & Purees' %}selected{% endif %}>Syrups & Purees</option>
                     <option value="Syrup" {% if product.sub_category == 'Syrup' %}selected{% endif %}>Syrup</option>
                     <option value="Puree" {% if product.sub_category == 'Puree' %}selected{% endif %}>Puree</option>
+                    <option value="Frozen Puree" {% if product.sub_category == 'Frozen Puree' %}selected{% endif %}>Frozen Puree</option>
                     <option value="Juice" {% if product.sub_category == 'Juice' %}selected{% endif %}>Juice</option>
                     <option value="Other" {% if product.sub_category == 'Other' %}selected{% endif %}>Other</option>
                 </select>
