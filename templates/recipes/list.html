@@ -70,17 +70,21 @@
             <td>{{ recipe.title }}</td>
             <td>{{ recipe.recipe_type if recipe.recipe_type else (recipe.type if recipe.type else 'N/A') }}</td>
             <td>
-                {% set cat_key = (recipe.type or recipe.recipe_type or '')|lower %}
-                {% if cat_key in ['cocktails','classic'] %}
-                    Cocktail
-                {% elif cat_key in ['mocktails','signature'] %}
-                    Mocktail
-                {% elif cat_key in ['beverages','beverage'] %}
-                    Beverage
-                {% elif cat_key in ['food'] %}
-                    Food
+                {% if recipe.food_category %}
+                    {{ recipe.food_category }}
                 {% else %}
-                    N/A
+                    {% set cat_key = (recipe.type or recipe.recipe_type or '')|lower %}
+                    {% if cat_key in ['cocktails','classic'] %}
+                        Cocktail
+                    {% elif cat_key in ['mocktails','signature'] %}
+                        Mocktail
+                    {% elif cat_key in ['beverages','beverage'] %}
+                        Beverage
+                    {% elif cat_key in ['food'] %}
+                        Food
+                    {% else %}
+                        N/A
+                    {% endif %}
                 {% endif %}
             </td>
             <td>{{ "%.2f"|format(cost_price) }}</td>

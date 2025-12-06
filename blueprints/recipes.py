@@ -59,9 +59,15 @@ def recipes_list():
         
         # Ensure ingredients are loaded for cost calculation
         for recipe in recipes:
-            _ = recipe.ingredients
-            for ingredient in recipe.ingredients:
-                _ = ingredient.get_product()
+            try:
+                _ = recipe.ingredients
+                for ingredient in recipe.ingredients:
+                    try:
+                        _ = ingredient.get_product()
+                    except Exception as ing_e:
+                        current_app.logger.warning(f"Error loading product for ingredient {ingredient.id}: {str(ing_e)}")
+            except Exception as recipe_e:
+                current_app.logger.warning(f"Error loading ingredients for recipe {recipe.id}: {str(recipe_e)}")
         
         return render_template('recipes/list.html', recipes=recipes, selected_type=recipe_type_filter, selected_category=category_filter)
     except Exception as e:
@@ -104,9 +110,15 @@ def recipe_list(category):
         
         # Ensure ingredients are loaded for cost calculation
         for recipe in recipes:
-            _ = recipe.ingredients
-            for ingredient in recipe.ingredients:
-                _ = ingredient.get_product()
+            try:
+                _ = recipe.ingredients
+                for ingredient in recipe.ingredients:
+                    try:
+                        _ = ingredient.get_product()
+                    except Exception as ing_e:
+                        current_app.logger.warning(f"Error loading product for ingredient {ingredient.id}: {str(ing_e)}")
+            except Exception as recipe_e:
+                current_app.logger.warning(f"Error loading ingredients for recipe {recipe.id}: {str(recipe_e)}")
         
         return render_template(
             config['template'],
