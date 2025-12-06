@@ -10,6 +10,7 @@ from utils.db_helpers import ensure_schema_updates
 from utils.file_upload import save_uploaded_file
 import uuid
 import os
+import time
 
 products_bp = Blueprint('products', __name__)
 
@@ -350,6 +351,14 @@ def bulk_upload_products():
     created = 0
     skipped = 0
     base_count = Product.query.filter(Product.user_id == current_user.id).count()
+    
+    # Track used codes in this batch to avoid duplicates within the same upload
+    used_unique_numbers = set()
+    used_barbuddy_codes = set()
+    
+    # Get existing codes for this user to avoid conflicts
+    existing_unique_numbers = {p.unique_item_number for p in Product.query.filter(Product.user_id == current_user.id).all() if p.unique_item_number}
+    existing_barbuddy_codes = {p.barbuddy_code for p in Product.query.filter(Product.user_id == current_user.id).all() if p.barbuddy_code}
 
     for idx, row in df.iterrows():
         try:
@@ -382,13 +391,21 @@ def bulk_upload_products():
 
             unique_col = normalized_columns.get('UNIQUE ITEM #')
             unique_item_number = clean_str(row.get(unique_col)) if unique_col else ''
-            if unique_item_number and Product.query.filter(Product.user_id == current_user.id, Product.unique_item_number == unique_item_number).first():
-                unique_item_number = ''
+            # Check if it exists in database OR in this batch
+            if unique_item_number:
+                if unique_item_number in existing_unique_numbers or unique_item_number in used_unique_numbers:
+                    unique_item_number = ''  # Will generate new one
+                else:
+                    used_unique_numbers.add(unique_item_number)
 
             code_col = normalized_columns.get('CODE')
             barbuddy_code = clean_str(row.get(code_col)) if code_col else ''
-            if barbuddy_code and Product.query.filter(Product.user_id == current_user.id, Product.barbuddy_code == barbuddy_code).first():
-                barbuddy_code = ''
+            # Check if it exists in database OR in this batch
+            if barbuddy_code:
+                if barbuddy_code in existing_barbuddy_codes or barbuddy_code in used_barbuddy_codes:
+                    barbuddy_code = ''  # Will generate new one
+                else:
+                    used_barbuddy_codes.add(barbuddy_code)
 
             quantity_col = normalized_columns.get('QUANTITY')
             quantity_value = row.get(quantity_col)
@@ -397,10 +414,32 @@ def bulk_upload_products():
             except (TypeError, ValueError):
                 ml_in_bottle = None
 
+            # Generate unique codes if not provided or if duplicates found
             if not unique_item_number:
-                unique_item_number = f"ITEM-{base_count + created + 1:06d}"
+                counter = 1
+                while True:
+                    candidate = f"ITEM-{base_count + created + counter:06d}"
+                    if candidate not in existing_unique_numbers and candidate not in used_unique_numbers:
+                        unique_item_number = candidate
+                        used_unique_numbers.add(candidate)
+                        break
+                    counter += 1
+                    if counter > 10000:  # Safety limit
+                        unique_item_number = f"ITEM-{int(time.time())}{created:04d}"
+                        break
+            
             if not barbuddy_code:
-                barbuddy_code = f"BB{base_count + created + 1:03d}"
+                counter = 1
+                while True:
+                    candidate = f"BB{base_count + created + counter:03d}"
+                    if candidate not in existing_barbuddy_codes and candidate not in used_barbuddy_codes:
+                        barbuddy_code = candidate
+                        used_barbuddy_codes.add(candidate)
+                        break
+                    counter += 1
+                    if counter > 10000:  # Safety limit
+                        barbuddy_code = f"BB{int(time.time())}{created:04d}"
+                        break
 
             product = Product(
                 user_id=current_user.id,
@@ -421,6 +460,7 @@ def bulk_upload_products():
         except Exception as exc:
             skipped += 1
             current_app.logger.error('Failed to import row %s: %s', idx, exc, exc_info=True)
+            db.session.rollback()  # Rollback this failed row
             continue
 
     try:
@@ -428,6 +468,7 @@ def bulk_upload_products():
         flash(f'Imported {created} products successfully. Skipped {skipped} rows.')
     except Exception as exc:
         db.session.rollback()
+        current_app.logger.error(f'Failed to save imported products: {str(exc)}', exc_info=True)
         flash(f'Failed to save imported products: {exc}')
 
     return redirect(url_for('products.ingredients_master'))
