@@ -166,22 +166,34 @@ def ensure_schema_updates():
                 if 'postgresql' in db_url or 'postgres' in db_url:
                     try:
                         # Drop old global unique constraint on unique_item_number if it exists
+                        # Check both table_constraints and pg_constraint for comprehensive detection
                         constraint_check = conn.execute(db.text(
-                            "SELECT constraint_name FROM information_schema.table_constraints "
-                            "WHERE table_name = 'product' AND constraint_name = 'product_unique_item_number_key'"
+                            "SELECT 1 FROM information_schema.table_constraints "
+                            "WHERE table_name = 'product' AND constraint_name = 'product_unique_item_number_key' "
+                            "UNION ALL "
+                            "SELECT 1 FROM pg_constraint WHERE conname = 'product_unique_item_number_key'"
                         ))
                         if constraint_check.fetchone():
-                            conn.execute(db.text("ALTER TABLE product DROP CONSTRAINT IF EXISTS product_unique_item_number_key"))
-                            current_app.logger.info('Dropped old global unique constraint on unique_item_number')
+                            try:
+                                conn.execute(db.text("ALTER TABLE product DROP CONSTRAINT IF EXISTS product_unique_item_number_key"))
+                                current_app.logger.info('Dropped old global unique constraint on unique_item_number')
+                            except Exception as drop_e:
+                                current_app.logger.warning(f'Could not drop unique_item_number constraint: {str(drop_e)}')
                         
                         # Drop old global unique constraint on barbuddy_code if it exists
+                        # Check both table_constraints and pg_constraint for comprehensive detection
                         barbuddy_constraint_check = conn.execute(db.text(
-                            "SELECT constraint_name FROM information_schema.table_constraints "
-                            "WHERE table_name = 'product' AND constraint_name = 'product_barbuddy_code_key'"
+                            "SELECT 1 FROM information_schema.table_constraints "
+                            "WHERE table_name = 'product' AND constraint_name = 'product_barbuddy_code_key' "
+                            "UNION ALL "
+                            "SELECT 1 FROM pg_constraint WHERE conname = 'product_barbuddy_code_key'"
                         ))
                         if barbuddy_constraint_check.fetchone():
-                            conn.execute(db.text("ALTER TABLE product DROP CONSTRAINT IF EXISTS product_barbuddy_code_key"))
-                            current_app.logger.info('Dropped old global unique constraint on barbuddy_code')
+                            try:
+                                conn.execute(db.text("ALTER TABLE product DROP CONSTRAINT IF EXISTS product_barbuddy_code_key"))
+                                current_app.logger.info('Dropped old global unique constraint on barbuddy_code')
+                            except Exception as drop_e:
+                                current_app.logger.warning(f'Could not drop barbuddy_code constraint: {str(drop_e)}')
                         
                         # Add new user-scoped unique constraints (only if user_id column exists)
                         if 'user_id' in product_columns:
@@ -217,6 +229,13 @@ def ensure_schema_updates():
                                 current_app.logger.warning(f'Could not create user-scoped constraints: {str(e)}')
                     except Exception as e:
                         current_app.logger.warning(f'Could not update unique constraints: {str(e)}')
+                        # Try to drop constraints directly as fallback
+                        try:
+                            conn.execute(db.text("ALTER TABLE product DROP CONSTRAINT IF EXISTS product_unique_item_number_key"))
+                            conn.execute(db.text("ALTER TABLE product DROP CONSTRAINT IF EXISTS product_barbuddy_code_key"))
+                            current_app.logger.info('Attempted to drop old constraints as fallback')
+                        except Exception:
+                            pass
     except Exception as e:
         # Log error but don't crash - schema updates are best effort
         current_app.logger.warning(f'Schema update warning: {str(e)}')
