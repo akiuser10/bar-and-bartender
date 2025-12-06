@@ -317,12 +317,18 @@ def add_recipe(category):
                             current_app.logger.warning(f"Error saving image: {str(e)}")
                             # Continue without image if upload fails
 
+                # Determine recipe_type based on category
+                if canonical == 'food':
+                    recipe_type = 'Food'
+                else:
+                    recipe_type = 'Beverage'
+                
                 recipe = Recipe(
                     recipe_code=recipe_code,
                     title=title,
                     method=method,
                     garnish=garnish,
-                    recipe_type='Beverage',
+                    recipe_type=recipe_type,
                     type=config['db_labels'][0],
                     item_level=item_level,
                     user_id=current_user.id,
