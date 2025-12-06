@@ -17,3 +17,4 @@ WTForms==3.2.1
 gunicorn==21.2.0
 psycopg[binary]==3.2.13
 Flask-Mail==0.10.0
+requests==2.31.0

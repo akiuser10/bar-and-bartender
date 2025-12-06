@@ -8,6 +8,7 @@ from extensions import db
 from models import Product, HomemadeIngredient
 from utils.db_helpers import ensure_schema_updates
 from utils.file_upload import save_uploaded_file
+from utils.ai_categorization import categorize_product_ai, should_use_ai_categorization
 import uuid
 import os
 import time
@@ -374,6 +375,20 @@ def bulk_upload_products():
 
             sub_cat_col = normalized_columns.get('SUB CATEGORY')
             sub_category = clean_str(row.get(sub_cat_col), 'Other') if sub_cat_col else 'Other'
+            
+            # Use AI to categorize if category or sub_category is missing/Other
+            if should_use_ai_categorization(category, sub_category):
+                try:
+                    ai_category, ai_sub_category = categorize_product_ai(description, supplier)
+                    if ai_category:
+                        category = ai_category
+                        current_app.logger.info(f'AI categorized "{description}" as category: {category}')
+                    if ai_sub_category:
+                        sub_category = ai_sub_category
+                        current_app.logger.info(f'AI categorized "{description}" as sub_category: {sub_category}')
+                except Exception as e:
+                    current_app.logger.warning(f'AI categorization failed for "{description}": {str(e)}')
+                    # Continue with original values if AI fails
 
             item_level_col = normalized_columns.get('ITEM LEVEL')
             item_level = clean_str(row.get(item_level_col), 'Primary') if item_level_col else 'Primary'
