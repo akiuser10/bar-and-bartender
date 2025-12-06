@@ -365,152 +365,152 @@ def edit_secondary_ingredient(id):
         if request.method == 'POST':
             try:
                 name = request.form.get('name', '').strip()
-            if not name:
-                flash('Name is required.')
-                return redirect(url_for('secondary.edit_secondary_ingredient', id=id))
-            
-            try:
-                total_volume_ml = float(request.form.get('total_volume_ml', 0) or 0)
-            except ValueError:
-                total_volume_ml = 0
-            unit = request.form.get('unit', 'ml')
-            method = request.form.get('method', '')
-
-            if total_volume_ml <= 0:
-                flash('Total volume must be greater than zero.')
-                return redirect(url_for('secondary.edit_secondary_ingredient', id=id))
-
-            secondary.name = name
-            secondary.total_volume_ml = total_volume_ml
-            secondary.unit = unit
-            secondary.method = method
-
-            for item in secondary.ingredients:
-                db.session.delete(item)
-            db.session.flush()
-
-            ingredient_labels = request.form.getlist('ingredient_label')
-            ingredient_ids = request.form.getlist('ingredient_id')
-            ingredient_types = request.form.getlist('ingredient_type')
-            ingredient_quantities = request.form.getlist('ingredient_qty')
-            ingredient_units = request.form.getlist('ingredient_unit')
-
-            lookup = {}
-            for opt in ingredient_options:
-                lookup[opt['label'].lower()] = opt
-                simple = opt['label'].split('(')[0].strip().lower()
-                lookup.setdefault(simple, opt)
-
-            matched = []
-            for idx, label in enumerate(ingredient_labels):
-                label_clean = (label or '').strip()
-                if not label_clean:
-                    continue
-                
-                option = None
-                if idx < len(ingredient_ids) and ingredient_ids[idx]:
-                    try:
-                        ing_id = int(ingredient_ids[idx])
-                        ing_type = ingredient_types[idx] if idx < len(ingredient_types) else None
-                        for opt in ingredient_options:
-                            if opt['id'] == ing_id and (not ing_type or opt['type'] == ing_type):
-                                option = opt
-                                break
-                    except (ValueError, TypeError):
-                        pass
-                
-                if not option:
-                    option = lookup.get(label_clean.lower())
+                if not name:
+                    flash('Name is required.')
+                    return redirect(url_for('secondary.edit_secondary_ingredient', id=id))
                 
                 try:
-                    qty = float(ingredient_quantities[idx] or 0)
-                except (ValueError, IndexError):
-                    qty = 0
-                unit_item = ingredient_units[idx] if idx < len(ingredient_units) and ingredient_units[idx] else 'ml'
-                
-                # Validate that we have both a valid option and a positive quantity
-                if not option:
-                    current_app.logger.warning(f"Ingredient not found for label: {label_clean}")
-                    continue
-                if qty <= 0:
-                    current_app.logger.warning(f"Invalid quantity {qty} for ingredient: {label_clean}")
-                    continue
+                    total_volume_ml = float(request.form.get('total_volume_ml', 0) or 0)
+                except ValueError:
+                    total_volume_ml = 0
+                unit = request.form.get('unit', 'ml')
+                method = request.form.get('method', '')
+
+                if total_volume_ml <= 0:
+                    flash('Total volume must be greater than zero.')
+                    return redirect(url_for('secondary.edit_secondary_ingredient', id=id))
+
+                secondary.name = name
+                secondary.total_volume_ml = total_volume_ml
+                secondary.unit = unit
+                secondary.method = method
+
+                for item in secondary.ingredients:
+                    db.session.delete(item)
+                db.session.flush()
+
+                ingredient_labels = request.form.getlist('ingredient_label')
+                ingredient_ids = request.form.getlist('ingredient_id')
+                ingredient_types = request.form.getlist('ingredient_type')
+                ingredient_quantities = request.form.getlist('ingredient_qty')
+                ingredient_units = request.form.getlist('ingredient_unit')
+
+                lookup = {}
+                for opt in ingredient_options:
+                    lookup[opt['label'].lower()] = opt
+                    simple = opt['label'].split('(')[0].strip().lower()
+                    lookup.setdefault(simple, opt)
+
+                matched = []
+                for idx, label in enumerate(ingredient_labels):
+                    label_clean = (label or '').strip()
+                    if not label_clean:
+                        continue
                     
-                matched.append((option, qty, unit_item))
+                    option = None
+                    if idx < len(ingredient_ids) and ingredient_ids[idx]:
+                        try:
+                            ing_id = int(ingredient_ids[idx])
+                            ing_type = ingredient_types[idx] if idx < len(ingredient_types) else None
+                            for opt in ingredient_options:
+                                if opt['id'] == ing_id and (not ing_type or opt['type'] == ing_type):
+                                    option = opt
+                                    break
+                        except (ValueError, TypeError):
+                            pass
+                    
+                    if not option:
+                        option = lookup.get(label_clean.lower())
+                    
+                    try:
+                        qty = float(ingredient_quantities[idx] or 0)
+                    except (ValueError, IndexError):
+                        qty = 0
+                    unit_item = ingredient_units[idx] if idx < len(ingredient_units) and ingredient_units[idx] else 'ml'
+                    
+                    # Validate that we have both a valid option and a positive quantity
+                    if not option:
+                        current_app.logger.warning(f"Ingredient not found for label: {label_clean}")
+                        continue
+                    if qty <= 0:
+                        current_app.logger.warning(f"Invalid quantity {qty} for ingredient: {label_clean}")
+                        continue
+                        
+                    matched.append((option, qty, unit_item))
 
-            if not matched:
-                flash('Please add at least one valid ingredient with a quantity greater than zero.')
-                db.session.rollback()
-                return redirect(url_for('secondary.edit_secondary_ingredient', id=id))
+                if not matched:
+                    flash('Please add at least one valid ingredient with a quantity greater than zero.')
+                    db.session.rollback()
+                    return redirect(url_for('secondary.edit_secondary_ingredient', id=id))
 
-            items_added = 0
-            for option, qty, unit_item in matched:
-                try:
-                    if option['type'] == 'Secondary':
-                        source_secondary = HomemadeIngredient.query.filter_by(id=option['id'], user_id=current_user.id).first()
-                        if not source_secondary or not source_secondary.total_volume_ml or source_secondary.total_volume_ml <= 0:
-                            current_app.logger.warning(f"Invalid secondary ingredient source: {option['id']}")
-                            continue
-                        factor = qty / source_secondary.total_volume_ml
-                        for component in source_secondary.ingredients:
-                            base_qty = component.quantity or 0
-                            if base_qty <= 0:
+                items_added = 0
+                for option, qty, unit_item in matched:
+                    try:
+                        if option['type'] == 'Secondary':
+                            source_secondary = HomemadeIngredient.query.filter_by(id=option['id'], user_id=current_user.id).first()
+                            if not source_secondary or not source_secondary.total_volume_ml or source_secondary.total_volume_ml <= 0:
+                                current_app.logger.warning(f"Invalid secondary ingredient source: {option['id']}")
                                 continue
-                            scaled_qty = base_qty * factor
-                            if scaled_qty <= 0:
+                            factor = qty / source_secondary.total_volume_ml
+                            for component in source_secondary.ingredients:
+                                base_qty = component.quantity or 0
+                                if base_qty <= 0:
+                                    continue
+                                scaled_qty = base_qty * factor
+                                if scaled_qty <= 0:
+                                    continue
+                                if not component.product_id:
+                                    continue
+                                unit_val = component.unit or unit_item
+                                quantity_ml_value = scaled_qty
+                                item = HomemadeIngredientItem(
+                                    homemade_id=secondary.id,
+                                    product_id=component.product_id,
+                                    quantity=scaled_qty,
+                                    unit=unit_val,
+                                    quantity_ml=quantity_ml_value
+                                )
+                                db.session.add(item)
+                                items_added += 1
+                        else:
+                            product = Product.query.filter_by(id=option['id'], user_id=current_user.id).first()
+                            if not product:
+                                current_app.logger.warning(f"Product not found: {option['id']}")
                                 continue
-                            if not component.product_id:
-                                continue
-                            unit_val = component.unit or unit_item
-                            quantity_ml_value = scaled_qty
+                            quantity_ml_value = qty
                             item = HomemadeIngredientItem(
                                 homemade_id=secondary.id,
-                                product_id=component.product_id,
-                                quantity=scaled_qty,
-                                unit=unit_val,
+                                product_id=option['id'],
+                                quantity=qty,
+                                unit=unit_item,
                                 quantity_ml=quantity_ml_value
                             )
                             db.session.add(item)
                             items_added += 1
-                    else:
-                        product = Product.query.filter_by(id=option['id'], user_id=current_user.id).first()
-                        if not product:
-                            current_app.logger.warning(f"Product not found: {option['id']}")
-                            continue
-                        quantity_ml_value = qty
-                        item = HomemadeIngredientItem(
-                            homemade_id=secondary.id,
-                            product_id=option['id'],
-                            quantity=qty,
-                            unit=unit_item,
-                            quantity_ml=quantity_ml_value
-                        )
-                        db.session.add(item)
-                        items_added += 1
-                except Exception as e:
-                    current_app.logger.error(f"Error adding ingredient item: {str(e)}", exc_info=True)
-                    continue
+                    except Exception as e:
+                        current_app.logger.error(f"Error adding ingredient item: {str(e)}", exc_info=True)
+                        continue
 
-            if items_added == 0:
-                flash('No valid ingredients were added. Please check that ingredients are selected and quantities are greater than zero.')
+                if items_added == 0:
+                    flash('No valid ingredients were added. Please check that ingredients are selected and quantities are greater than zero.')
+                    db.session.rollback()
+                    return redirect(url_for('secondary.edit_secondary_ingredient', id=id))
+
+                db.session.commit()
+                # Expire and reload the secondary ingredient to ensure ingredients are loaded
+                db.session.expire(secondary)
+                db.session.refresh(secondary)
+                # Force reload of ingredients relationship
+                _ = secondary.ingredients
+                for item in secondary.ingredients:
+                    _ = item.product
+                flash(f'Secondary ingredient updated successfully! {items_added} ingredient(s) added.')
+                return redirect(url_for('secondary.view_secondary_ingredient', id=secondary.id))
+            except Exception as e:
                 db.session.rollback()
+                current_app.logger.error(f"Error updating secondary ingredient: {str(e)}", exc_info=True)
+                flash(f'An error occurred while updating the secondary ingredient: {str(e)}', 'error')
                 return redirect(url_for('secondary.edit_secondary_ingredient', id=id))
-
-            db.session.commit()
-            # Expire and reload the secondary ingredient to ensure ingredients are loaded
-            db.session.expire(secondary)
-            db.session.refresh(secondary)
-            # Force reload of ingredients relationship
-            _ = secondary.ingredients
-            for item in secondary.ingredients:
-                _ = item.product
-            flash(f'Secondary ingredient updated successfully! {items_added} ingredient(s) added.')
-            return redirect(url_for('secondary.view_secondary_ingredient', id=secondary.id))
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Error updating secondary ingredient: {str(e)}", exc_info=True)
-            flash(f'An error occurred while updating the secondary ingredient: {str(e)}', 'error')
-            return redirect(url_for('secondary.edit_secondary_ingredient', id=id))
 
         preset_rows = []
         for component in secondary.ingredients:
