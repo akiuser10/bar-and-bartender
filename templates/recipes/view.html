@@ -189,7 +189,7 @@
 
     <div class="actions recipe-actions">
         {% if category_slug and category_slug in ['cocktails', 'mocktails', 'beverages'] %}
-        <a class="btn secondary" href="{{ url_for('recipes.recipe_list', category=category_slug) }}">Back to {{ category_display }}</a>
+        <a class="btn secondary" href="{{ url_for('recipes.recipe_list', category=category_slug) }}">Back</a>
         {% else %}
         <a class="btn secondary" href="{{ url_for('recipes.recipes_list') }}">Back to Recipes</a>
         {% endif %}
