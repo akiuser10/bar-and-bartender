@@ -330,11 +330,25 @@ def add_recipe(category):
                             current_app.logger.warning(f"Error saving image: {str(e)}")
                             # Continue without image if upload fails
 
-                # Determine recipe_type based on category
+                # Determine recipe_type and type based on category and food_category
                 if canonical == 'food':
                     recipe_type = 'Food'
+                    recipe_type_db = 'Food'
                 else:
                     recipe_type = 'Beverage'
+                    # For beverages, determine type based on food_category selection
+                    if food_category:
+                        food_category_lower = food_category.lower()
+                        if 'cocktail' in food_category_lower:
+                            recipe_type_db = 'Cocktails'
+                        elif 'mocktail' in food_category_lower:
+                            recipe_type_db = 'Mocktails'
+                        else:
+                            # For other beverages (wines, spirits, etc.), use Beverages
+                            recipe_type_db = 'Beverages'
+                    else:
+                        # Default to Beverages if no category selected
+                        recipe_type_db = config['db_labels'][0] if config else 'Beverages'
                 
                 recipe = Recipe(
                     recipe_code=recipe_code,
@@ -343,7 +357,7 @@ def add_recipe(category):
                     garnish=garnish,
                     food_category=food_category,
                     recipe_type=recipe_type,
-                    type=config['db_labels'][0],
+                    type=recipe_type_db,
                     item_level=item_level,
                     user_id=current_user.id,
                     image_path=image_path,
