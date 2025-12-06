@@ -22,25 +22,21 @@
                         {% for item in secondary.ingredients %}
                             {% if item.product and item.product_id %}
                                 {% set has_ingredients = true %}
-                                {% try %}
-                                    {% set cost = item.calculate_cost() %}
-                                    {% set total_cost = total_cost + cost %}
-                                    <tr>
-                                        <td class="code-cell">{{ item.product.barbuddy_code or 'N/A' }}</td>
-                                        <td class="description-cell">{{ item.product.description or 'N/A' }}</td>
-                                        <td class="unit-qty-cell">{{ "%.0f"|format(item.product.ml_in_bottle or 0) }}</td>
-                                        {% set display_unit = item.unit %}
-                                        {% if display_unit and display_unit|lower == 'each' %}
-                                            {% set display_unit = '' %}
-                                        {% endif %}
-                                        <td class="recipe-ml-cell">
-                                            {{ "%.2f"|format(item.quantity) }}{% if display_unit %} {{ display_unit }}{% endif %}
-                                        </td>
-                                        <td class="cost-cell">AED {{ "%.2f"|format(cost) }}</td>
-                                    </tr>
-                                {% except %}
-                                    {# Skip this ingredient if there's an error calculating cost #}
-                                {% endtry %}
+                                {% set cost = item.calculate_cost() if item.calculate_cost else 0.0 %}
+                                {% set total_cost = total_cost + cost %}
+                                <tr>
+                                    <td class="code-cell">{{ item.product.barbuddy_code if item.product.barbuddy_code else 'N/A' }}</td>
+                                    <td class="description-cell">{{ item.product.description if item.product.description else 'N/A' }}</td>
+                                    <td class="unit-qty-cell">{{ "%.0f"|format(item.product.ml_in_bottle if item.product.ml_in_bottle else 0) }}</td>
+                                    {% set display_unit = item.unit %}
+                                    {% if display_unit and display_unit|lower == 'each' %}
+                                        {% set display_unit = '' %}
+                                    {% endif %}
+                                    <td class="recipe-ml-cell">
+                                        {{ "%.2f"|format(item.quantity) }}{% if display_unit %} {{ display_unit }}{% endif %}
+                                    </td>
+                                    <td class="cost-cell">AED {{ "%.2f"|format(cost) }}</td>
+                                </tr>
                             {% endif %}
                         {% endfor %}
                     {% endif %}
