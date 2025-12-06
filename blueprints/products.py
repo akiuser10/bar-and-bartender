@@ -374,16 +374,28 @@ def bulk_upload_products():
                 category = 'Other'
 
             sub_cat_col = normalized_columns.get('SUB CATEGORY')
-            sub_category = clean_str(row.get(sub_cat_col), 'Other') if sub_cat_col else 'Other'
+            # Preserve the exact sub_category from Excel sheet if it exists and is not empty
+            if sub_cat_col and row.get(sub_cat_col):
+                sub_category_raw = str(row.get(sub_cat_col)).strip()
+                sub_category = sub_category_raw if sub_category_raw else 'Other'
+            else:
+                # Only set to 'Other' if column doesn't exist or is truly empty
+                sub_category = 'Other'
             
-            # Use AI to categorize if category or sub_category is missing/Other
-            if should_use_ai_categorization(category, sub_category):
+            # Use AI to categorize ONLY if category or sub_category is truly missing/empty
+            # Don't use AI if sub_category is explicitly "Other" from the Excel sheet
+            category_missing = not category or category.strip() == '' or category.strip() == 'Other'
+            sub_category_missing = (not sub_cat_col or not row.get(sub_cat_col) or 
+                                   (sub_category and sub_category.strip() == ''))
+            
+            if category_missing or sub_category_missing:
                 try:
                     ai_category, ai_sub_category = categorize_product_ai(description, supplier)
-                    if ai_category:
+                    if ai_category and category_missing:
                         category = ai_category
                         current_app.logger.info(f'AI categorized "{description}" as category: {category}')
-                    if ai_sub_category:
+                    # Only overwrite sub_category if it was truly missing (not explicitly "Other" from sheet)
+                    if ai_sub_category and sub_category_missing:
                         sub_category = ai_sub_category
                         current_app.logger.info(f'AI categorized "{description}" as sub_category: {sub_category}')
                 except Exception as e:
