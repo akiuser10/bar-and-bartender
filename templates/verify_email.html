@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block page_panel %}
+<h2>Verify Your Email</h2>
+<p>We've sent a 6-digit verification code to <strong>{{ email }}</strong></p>
+<p style="color: #666; font-size: 14px;">Please check your inbox and enter the code below. The code will expire in 10 minutes.</p>
+
+<form method="POST" action="{{ url_for('auth.verify_registration') }}">
+    <label for="verification_code">Verification Code:</label>
+    <input 
+        type="text" 
+        id="verification_code" 
+        name="verification_code" 
+        required 
+        placeholder="Enter 6-digit code" 
+        title="Verification Code"
+        maxlength="6"
+        pattern="[0-9]{6}"
+        style="text-align: center; font-size: 24px; letter-spacing: 5px; font-weight: bold;"
+        autocomplete="off"
+        autofocus
+    >
+    <small style="color: #666; display: block; margin-top: 5px;">Enter the 6-digit code sent to your email</small>
+
+    <div class="actions">
+        <button type="submit" class="btn">Verify Email</button>
+        <a href="{{ url_for('auth.register') }}" class="btn secondary">Cancel</a>
+    </div>
+</form>
+
+<form method="POST" action="{{ url_for('auth.resend_code') }}" style="margin-top: 10px;">
+    <button type="submit" class="btn secondary">Resend Code</button>
+</form>
+
+<script>
+// Auto-format code input (only numbers, max 6 digits)
+document.getElementById('verification_code').addEventListener('input', function(e) {
+    // Remove any non-numeric characters
+    this.value = this.value.replace(/[^0-9]/g, '');
+    // Limit to 6 digits
+    if (this.value.length > 6) {
+        this.value = this.value.slice(0, 6);
+    }
+    // Auto-submit when 6 digits are entered (optional)
+    if (this.value.length === 6) {
+        // You can enable auto-submit if desired
+        // this.form.submit();
+    }
+});
+</script>
+{% endblock %}

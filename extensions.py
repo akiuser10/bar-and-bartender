@@ -4,10 +4,12 @@ Initialize all Flask extensions here
 """
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_mail import Mail
 
 # Initialize extensions
 db = SQLAlchemy()
 login_manager = LoginManager()
+mail = Mail()
 
 # Configure login manager (will be set in app factory)
 login_manager.login_view = 'auth.login'
