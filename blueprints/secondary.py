@@ -102,24 +102,27 @@ def secondary_ingredients():
 @login_required
 def view_secondary_ingredient(id):
     ensure_schema_updates()
-    from sqlalchemy.orm import joinedload
     try:
+        from sqlalchemy.orm import joinedload
         secondary = HomemadeIngredient.query.filter_by(user_id=current_user.id).options(
             joinedload(HomemadeIngredient.ingredients).joinedload(HomemadeIngredientItem.product)
-        ).get_or_404(id)
-        # Ensure ingredients and products are loaded, handling None products gracefully
+        ).first_or_404()
+        
+        # Ensure ingredients are loaded
         _ = secondary.ingredients
         for item in secondary.ingredients:
             try:
                 _ = item.product
             except Exception as e:
                 current_app.logger.warning(f"Error loading product for ingredient item {item.id}: {str(e)}")
-                # Product might be None or deleted, continue
                 continue
+        
         return render_template('secondary_ingredients/view.html', secondary=secondary)
     except Exception as e:
         current_app.logger.error(f"Error in view_secondary_ingredient: {str(e)}", exc_info=True)
-        flash('An error occurred while loading the secondary ingredient.', 'error')
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        flash(f'An error occurred while loading the secondary ingredient: {str(e)}', 'error')
         return redirect(url_for('secondary.secondary_ingredients'))
 
 
@@ -314,26 +317,22 @@ def add_secondary_ingredient():
 @login_required
 def edit_secondary_ingredient(id):
     ensure_schema_updates()
-    from sqlalchemy.orm import joinedload
     try:
+        from sqlalchemy.orm import joinedload
         secondary = HomemadeIngredient.query.filter_by(user_id=current_user.id).options(
             joinedload(HomemadeIngredient.ingredients).joinedload(HomemadeIngredientItem.product)
-        ).get_or_404(id)
-        # Ensure ingredients and products are loaded, handling None products gracefully
+        ).first_or_404()
+        
+        # Ensure ingredients are loaded
         _ = secondary.ingredients
         for item in secondary.ingredients:
             try:
                 _ = item.product
             except Exception as e:
                 current_app.logger.warning(f"Error loading product for ingredient item {item.id}: {str(e)}")
-                # Product might be None or deleted, continue
                 continue
-    except Exception as e:
-        current_app.logger.error(f"Error loading secondary ingredient for edit: {str(e)}", exc_info=True)
-        flash('An error occurred while loading the secondary ingredient.', 'error')
-        return redirect(url_for('secondary.secondary_ingredients'))
-    products = Product.query.filter(Product.user_id == current_user.id).order_by(Product.description).all()
-    existing_secondary = HomemadeIngredient.query.filter(HomemadeIngredient.user_id == current_user.id, HomemadeIngredient.id != id).order_by(HomemadeIngredient.name).all()
+        products = Product.query.filter(Product.user_id == current_user.id).order_by(Product.description).all()
+        existing_secondary = HomemadeIngredient.query.filter(HomemadeIngredient.user_id == current_user.id, HomemadeIngredient.id != id).order_by(HomemadeIngredient.name).all()
 
     ingredient_options = [
         {
@@ -513,28 +512,34 @@ def edit_secondary_ingredient(id):
             flash(f'An error occurred while updating the secondary ingredient: {str(e)}', 'error')
             return redirect(url_for('secondary.edit_secondary_ingredient', id=id))
 
-    preset_rows = []
-    for component in secondary.ingredients:
-        try:
-            if component.product and component.product_id:
-                # Match the exact label format used in ingredient_options
-                description = component.product.description or ''
-                code = component.product.barbuddy_code or 'N/A'
-                label = f"{description} ({code})"
-                preset_rows.append({
-                    'label': label.strip(),
-                    'id': component.product_id,
-                    'type': 'Product',
-                    'qty': float(component.quantity or 0),
-                    'unit': component.unit or 'ml',
-                    'code': code
-                })
-        except Exception as e:
-            current_app.logger.warning(f"Error processing ingredient component {component.id} for preset rows: {str(e)}")
-            # Skip this component if product is missing or inaccessible
-            continue
+        preset_rows = []
+        for component in secondary.ingredients:
+            try:
+                if component.product and component.product_id:
+                    # Match the exact label format used in ingredient_options
+                    description = component.product.description or ''
+                    code = component.product.barbuddy_code or 'N/A'
+                    label = f"{description} ({code})"
+                    preset_rows.append({
+                        'label': label.strip(),
+                        'id': component.product_id,
+                        'type': 'Product',
+                        'qty': float(component.quantity or 0),
+                        'unit': component.unit or 'ml',
+                        'code': code
+                    })
+            except Exception as e:
+                current_app.logger.warning(f"Error processing ingredient component {component.id} for preset rows: {str(e)}")
+                # Skip this component if product is missing or inaccessible
+                continue
 
-    return render_template('secondary_ingredients/edit.html', ingredient_options=ingredient_options, secondary=secondary, preset_rows=preset_rows)
+        return render_template('secondary_ingredients/edit.html', ingredient_options=ingredient_options, secondary=secondary, preset_rows=preset_rows)
+    except Exception as e:
+        current_app.logger.error(f"Error in edit_secondary_ingredient: {str(e)}", exc_info=True)
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        flash(f'An error occurred while loading the secondary ingredient: {str(e)}', 'error')
+        return redirect(url_for('secondary.secondary_ingredients'))
 
 
 @secondary_bp.route('/secondary-ingredients/<int:id>/delete', methods=['POST'])
