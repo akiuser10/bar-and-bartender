@@ -195,6 +195,20 @@ def ensure_schema_updates():
                             except Exception as drop_e:
                                 current_app.logger.warning(f'Could not drop barbuddy_code constraint: {str(drop_e)}')
                         
+                        # Also check for and drop any unique indexes that might be enforcing uniqueness
+                        # Sometimes PostgreSQL creates unique indexes instead of constraints
+                        unique_index_check = conn.execute(db.text(
+                            "SELECT indexname FROM pg_indexes "
+                            "WHERE tablename = 'product' AND indexname IN ('product_unique_item_number_key', 'product_barbuddy_code_key')"
+                        ))
+                        for row in unique_index_check:
+                            index_name = row[0]
+                            try:
+                                conn.execute(db.text(f"DROP INDEX IF EXISTS {index_name}"))
+                                current_app.logger.info(f'Dropped old unique index: {index_name}')
+                            except Exception as drop_e:
+                                current_app.logger.warning(f'Could not drop index {index_name}: {str(drop_e)}')
+                        
                         # Add new user-scoped unique constraints (only if user_id column exists)
                         if 'user_id' in product_columns:
                             try:
