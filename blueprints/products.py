@@ -295,21 +295,53 @@ def delete_selected_ingredients():
             return redirect(url_for('products.ingredients_master'))
         
         count = 0
+        errors = []
         for item_id in selected_ids:
             try:
-                product = Product.query.filter(Product.id == int(item_id), Product.user_id == current_user.id).first()
+                item_id_int = int(item_id)
+                product = Product.query.filter(Product.id == item_id_int, Product.user_id == current_user.id).first()
                 if product:
+                    # Check if product is used in any recipes or secondary ingredients
+                    from models import RecipeIngredient, HomemadeIngredientItem
+                    recipe_usage = RecipeIngredient.query.filter(
+                        RecipeIngredient.ingredient_type == 'Product',
+                        RecipeIngredient.ingredient_id == item_id_int
+                    ).first()
+                    secondary_usage = HomemadeIngredientItem.query.filter(
+                        HomemadeIngredientItem.product_id == item_id_int
+                    ).first()
+                    
+                    if recipe_usage or secondary_usage:
+                        errors.append(f"{product.description} is used in recipes/secondary ingredients and cannot be deleted.")
+                        continue
+                    
                     db.session.delete(product)
                     count += 1
-            except (ValueError, TypeError):
+                else:
+                    current_app.logger.warning(f'Product {item_id_int} not found or does not belong to user {current_user.id}')
+            except (ValueError, TypeError) as e:
+                current_app.logger.warning(f'Invalid item ID: {item_id}, error: {str(e)}')
+                continue
+            except Exception as e:
+                current_app.logger.error(f'Error deleting product {item_id}: {str(e)}', exc_info=True)
+                errors.append(f"Error deleting item {item_id}: {str(e)}")
                 continue
         
-        db.session.commit()
-        flash(f'Successfully deleted {count} selected product(s) from the master list.')
+        if errors:
+            db.session.rollback()
+            flash('Some items could not be deleted: ' + ' '.join(errors), 'error')
+        else:
+            db.session.commit()
+            if count > 0:
+                flash(f'Successfully deleted {count} selected product(s) from the master list.')
+            else:
+                flash('No products were deleted. Please check that items are selected and belong to you.', 'error')
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'Error deleting selected ingredients: {str(e)}', exc_info=True)
-        flash('An error occurred while deleting selected products.', 'error')
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        flash(f'An error occurred while deleting selected products: {str(e)}', 'error')
     return redirect(url_for('products.ingredients_master'))
 
 

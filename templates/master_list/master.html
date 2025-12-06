@@ -102,8 +102,8 @@ function confirmDeleteSelected() {
     // Collect selected IDs and add them to the form
     const form = document.querySelector('.delete-selected-form');
     if (form) {
-        // Remove any existing hidden inputs
-        form.querySelectorAll('input[name="selected_items"]').forEach(function(input) {
+        // Remove any existing hidden inputs (but not the checkboxes in the table)
+        form.querySelectorAll('input[type="hidden"][name="selected_items"]').forEach(function(input) {
             input.remove();
         });
         
