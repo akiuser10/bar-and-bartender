@@ -364,7 +364,7 @@ def edit_secondary_ingredient(id):
 
         if request.method == 'POST':
             try:
-            name = request.form.get('name', '').strip()
+                name = request.form.get('name', '').strip()
             if not name:
                 flash('Name is required.')
                 return redirect(url_for('secondary.edit_secondary_ingredient', id=id))
