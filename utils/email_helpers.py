@@ -38,11 +38,11 @@ def send_verification_email(email, code):
             return False
         
         msg = Message(
-            subject='Bar & Bartender - Email Verification Code',
+            subject='Chefs & Bartenders - Email Verification Code',
             recipients=[email],
             body=f'''Hello!
 
-Thank you for registering with Bar & Bartender!
+Thank you for registering with Chefs & Bartenders!
 
 Your verification code is: {code}
 
@@ -51,14 +51,14 @@ This code will expire in 10 minutes.
 If you did not request this code, please ignore this email.
 
 Best regards,
-Bar & Bartender Team
+Chefs & Bartenders Team
 ''',
             html=f'''<html>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
     <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #2c3e50;">Bar & Bartender - Email Verification</h2>
+        <h2 style="color: #2c3e50;">Chefs & Bartenders - Email Verification</h2>
         <p>Hello!</p>
-        <p>Thank you for registering with Bar & Bartender!</p>
+        <p>Thank you for registering with Chefs & Bartenders!</p>
         <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0; border-radius: 5px;">
             <p style="margin: 0; font-size: 14px; color: #666;">Your verification code is:</p>
             <h1 style="margin: 10px 0; font-size: 32px; color: #2c3e50; letter-spacing: 5px;">{code}</h1>
@@ -66,7 +66,7 @@ Bar & Bartender Team
         <p style="font-size: 12px; color: #999;">This code will expire in 10 minutes.</p>
         <p>If you did not request this code, please ignore this email.</p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="font-size: 12px; color: #999;">Best regards,<br>Bar & Bartender Team</p>
+        <p style="font-size: 12px; color: #999;">Best regards,<br>Chefs & Bartenders Team</p>
     </div>
 </body>
 </html>'''
