@@ -372,6 +372,9 @@ def bulk_upload_products():
 
     required_columns = ['DESCRIPTION', 'SUPPLIER', 'CATEGORY', 'COST/UNIT (AED)']
     normalized_columns = {str(col).upper().strip(): col for col in df.columns}
+    # Log available columns for debugging
+    current_app.logger.info(f'Excel columns found: {list(df.columns)}')
+    current_app.logger.info(f'Normalized columns: {list(normalized_columns.keys())}')
     missing = [col for col in required_columns if col not in normalized_columns]
     if missing:
         flash(f'Missing required columns: {", ".join(missing)}')
@@ -406,7 +409,11 @@ def bulk_upload_products():
             if not category:
                 category = 'Other'
 
-            sub_cat_col = normalized_columns.get('SUB CATEGORY')
+            # Try multiple possible column name variations
+            sub_cat_col = (normalized_columns.get('SUB CATEGORY') or 
+                          normalized_columns.get('SUB-CATEGORY') or
+                          normalized_columns.get('SUB_CATEGORY') or
+                          normalized_columns.get('SUBCATEGORY'))
             sub_category = 'Other'  # Default value
             sub_category_from_excel = False  # Track if we got a value from Excel
             
@@ -420,12 +427,12 @@ def bulk_upload_products():
                         if sub_category_str:  # Not empty after strip
                             sub_category = sub_category_str
                             sub_category_from_excel = True
-                            current_app.logger.info(f'Preserved sub_category from Excel: "{sub_category}" for "{description}"')
+                            current_app.logger.info(f'Preserved sub_category from Excel: "{sub_category}" for "{description}" (column: {sub_cat_col})')
                 except (KeyError, IndexError, Exception) as e:
-                    current_app.logger.warning(f'Error reading sub_category column for "{description}": {str(e)}')
+                    current_app.logger.warning(f'Error reading sub_category column "{sub_cat_col}" for "{description}": {str(e)}')
                     # Keep default 'Other', sub_category_from_excel remains False
             else:
-                current_app.logger.debug(f'SUB CATEGORY column not found in Excel for "{description}"')
+                current_app.logger.warning(f'SUB CATEGORY column not found in Excel for "{description}". Available columns: {list(normalized_columns.keys())}')
             
             # Use AI to categorize ONLY if category or sub_category is truly missing/empty
             # IMPORTANT: Never use AI if sub_category was explicitly set from Excel (even if it's "Other")
