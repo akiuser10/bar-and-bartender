@@ -16,7 +16,8 @@ auth_bp = Blueprint('auth', __name__)
 def register():
     from flask import current_app
     if request.method == 'POST':
-        current_app.logger.info('Registration form submitted')
+        current_app.logger.info('=== REGISTRATION ATTEMPT STARTED ===')
+        current_app.logger.info(f'Form data received: username={request.form.get("username", "NOT PROVIDED")}, email={request.form.get("email", "NOT PROVIDED")}')
         try:
             # Initial registration step - collect user info and send code
             username = request.form.get('username', '').strip()
@@ -26,7 +27,8 @@ def register():
 
             # Validate inputs
             if not username or not email or not password or not password_confirm:
-                flash('Please fill in all fields.')
+                current_app.logger.warning(f'Validation failed: missing fields - username={bool(username)}, email={bool(email)}, password={bool(password)}, password_confirm={bool(password_confirm)}')
+                flash('Please fill in all fields.', 'error')
                 return render_template('register.html')
             
             # Validate passwords match
@@ -105,10 +107,13 @@ def register():
             
             # Email verification is MANDATORY - send verification email
             # Code is ONLY sent via email, never shown on page
+            current_app.logger.info(f'Attempting to send verification email to {email} with code {code}')
             email_sent = send_verification_email(email, code)
+            current_app.logger.info(f'Email send result: {email_sent}')
             
             if email_sent:
-                flash('Verification code sent to your email. Please check your inbox (and spam folder).')
+                current_app.logger.info(f'Email sent successfully to {email}')
+                flash('Verification code sent to your email. Please check your inbox (and spam folder).', 'success')
                 return render_template('verify_email.html', email=email)
             else:
                 # If email not configured or failed, show detailed error
@@ -119,19 +124,22 @@ def register():
                 
                 # Check what specifically failed
                 if not mail_username or not mail_password:
-                    error_detail = 'Email service is not configured. Please contact the administrator to set up email service.'
+                    error_detail = 'Email service is not configured on the server. The administrator needs to set up MAIL_USERNAME and MAIL_PASSWORD environment variables.'
                     current_app.logger.error(f'Email not configured - MAIL_USERNAME={bool(mail_username)}, MAIL_PASSWORD={bool(mail_password)}')
                 else:
-                    error_detail = f'Email service is configured but failed to send. Server: {mail_server}. Please try again or contact administrator.'
+                    error_detail = f'Email service is configured (Server: {mail_server}) but failed to send. This could be due to incorrect credentials or network issues.'
                     current_app.logger.error(f'Email sending failed - MAIL_SERVER={mail_server}, email={email}')
                 
-                flash(f'⚠️ Unable to send verification email. Email verification is required to complete registration.\n\n{error_detail}\n\nPlease contact the administrator if this problem persists.', 'error')
+                error_message = f'⚠️ Unable to send verification email. Email verification is required to complete registration.\n\n{error_detail}\n\nPlease contact the administrator to configure email service.'
+                current_app.logger.error(f'Registration blocked due to email failure: {error_message}')
+                flash(error_message, 'error')
                 
                 # Clean up the verification code since we can't send it
                 try:
                     db.session.delete(verification)
                     db.session.commit()
-                except:
+                except Exception as cleanup_error:
+                    current_app.logger.warning(f'Error cleaning up verification code: {cleanup_error}')
                     db.session.rollback()
                 session.clear()
                 return render_template('register.html')

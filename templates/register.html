@@ -45,6 +45,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Form is valid, allow submission
             console.log('Form submitting...');
+            // Show loading indicator
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Registering...';
+            }
         });
     }
 });
