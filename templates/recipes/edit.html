@@ -283,7 +283,10 @@ function createRow(initialData) {
             const costPerUnit = parseFloat(option.cost_per_unit || 0);
             const containerVolume = parseFloat(option.container_volume || 0);
             let unitCost = costPerUnit;
-            if (containerVolume > 0) {
+            // For secondary ingredients, cost_per_unit is already cost per ml, don't divide
+            if (option.type === 'Secondary') {
+                unitCost = costPerUnit; // Already cost per ml
+            } else if (containerVolume > 0) {
                 unitCost = costPerUnit / containerVolume;
             }
             cost = unitCost * quantity;
