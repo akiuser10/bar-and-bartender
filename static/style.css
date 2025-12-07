@@ -60,9 +60,20 @@ canvas {
     width: auto;
     max-width: 200px;
     object-fit: contain;
+    display: block;
 }
 
 .logo-text {
+    display: inline;
+}
+
+/* Hide text when logo image loads successfully */
+.logo-link:has(img:not([style*="display: none"])) .logo-text {
+    display: none;
+}
+
+/* Show text only when image fails to load */
+.logo-link img[style*="display: none"] + .logo-text {
     display: inline;
 }
 
