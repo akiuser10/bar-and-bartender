@@ -47,6 +47,25 @@ canvas {
     gap: 15px;
 }
 
+.logo-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: white;
+}
+
+.logo-img {
+    height: 40px;
+    width: auto;
+    max-width: 200px;
+    object-fit: contain;
+}
+
+.logo-text {
+    display: inline;
+}
+
 .nav-center {
     flex: 1;
     display: flex;

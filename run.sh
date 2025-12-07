@@ -1,5 +1,5 @@
 #!/bin/bash
-# Bar & Bartender - Development Server Script
+# Chefs & Bartenders - Development Server Script
 # Activates virtual environment and runs Flask development server
 cd "$(dirname "$0")"
 

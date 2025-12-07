@@ -1,5 +1,5 @@
 """
-Bar & Bartender Flask Application Factory
+Chefs & Bartenders Flask Application Factory
 Clean, modular application structure using blueprints
 """
 from flask import Flask

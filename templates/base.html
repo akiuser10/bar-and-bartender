@@ -10,7 +10,10 @@
 <body>
     <header class="navbar">
         <div class="nav-left">
-            <h1><a href="{{ url_for('main.index') }}">🍸 Chefs & Bartenders</a></h1>
+            <h1><a href="{{ url_for('main.index') }}" class="logo-link">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Chefs & Bartenders" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                <span class="logo-text">🍸 Chefs & Bartenders</span>
+            </a></h1>
         </div>
         <nav class="nav-center">
             <a class="nav-pill" href="{{ url_for('products.ingredients_master') }}">Master List</a>

@@ -1,4 +1,4 @@
-# Deployment Guide for Bar & Bartender
+# Deployment Guide for Chefs & Bartenders
 
 This guide covers multiple deployment options for your Flask application.
 

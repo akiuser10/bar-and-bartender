@@ -1,17 +1,17 @@
-# Bar & Bartender
+# Chefs & Bartenders
 
 A comprehensive Recipe & Costing Management System for bars and restaurants
 
 ## Description
 
-Bar & Bartender is a Flask-based web application designed to help bartenders, bar managers, and restaurant owners manage their recipes, ingredients, and cost calculations efficiently. The system provides a centralized platform for tracking products, creating custom recipes, calculating precise costs, and managing pricing strategies. Built with real-world bar industry experience, this application addresses the common challenges faced by professionals when calculating recipe costs, especially when creating new drinks or adjusting existing ones due to product or price changes.
+Chefs & Bartenders is a Flask-based web application designed to help bartenders, bar managers, and restaurant owners manage their recipes, ingredients, and cost calculations efficiently. The system provides a centralized platform for tracking products, creating custom recipes, calculating precise costs, and managing pricing strategies. Built with real-world bar industry experience, this application addresses the common challenges faced by professionals when calculating recipe costs, especially when creating new drinks or adjusting existing ones due to product or price changes.
 
-The application streamlines the entire recipe management workflow, from initial product inventory tracking through complex recipe creation with nested ingredients, to automatic cost calculation and profit margin analysis. Unlike many commercial costing tools that are complicated or restrictive, Bar & Bartender is designed with bartenders in mind, offering an intuitive interface that makes recipe costing accessible to anyone in the bar community worldwide.
+The application streamlines the entire recipe management workflow, from initial product inventory tracking through complex recipe creation with nested ingredients, to automatic cost calculation and profit margin analysis. Unlike many commercial costing tools that are complicated or restrictive, Chefs & Bartenders is designed with bartenders in mind, offering an intuitive interface that makes recipe costing accessible to anyone in the bar community worldwide.
 
 ## Social Relevance
 
 Having worked in the bar industry since 2012, I've seen firsthand how challenging it can be to calculate recipe costs—especially when creating new drinks or adjusting existing ones due to product or price changes. Many companies offer their own costing tools, but they are often complicated, restrictive, or not designed with bartenders in mind.
-**"Bar & Bartender"** aims to solve this problem by providing an easy-to-use, accessible platform that anyone in the bar community worldwide can benefit from. By streamlining recipe costing and simplifying day-to-day operations, the project supports bartenders and bar teams in working smarter, more accurately, and more creatively.
+**"Chefs & Bartenders"** aims to solve this problem by providing an easy-to-use, accessible platform that anyone in the bar community worldwide can benefit from. By streamlining recipe costing and simplifying day-to-day operations, the project supports bartenders and bar teams in working smarter, more accurately, and more creatively.
 
 ### Key Features
 
@@ -163,7 +163,7 @@ Planned enhancements include recipe scaling functionality (adjust quantities for
 
 ## License
 
-Copyright © 2024 Bar & Bartender | Crafted by Akhil Soman 🍹
+Copyright © 2024 Chefs & Bartenders | Crafted by Akhil Soman 🍹
 
 ## Support
 

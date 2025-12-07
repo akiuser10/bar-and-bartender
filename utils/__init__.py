@@ -1,4 +1,4 @@
 """
-Utility functions for Bar & Bartender application
+Utility functions for Chefs & Bartenders application
 """
 
