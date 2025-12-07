@@ -356,8 +356,25 @@ class RecipeIngredient(db.Model):
                     return round(ingredient.cost_per_unit * qty, 2)
             
             elif isinstance(ingredient, HomemadeIngredient):
-                cost_per_unit = ingredient.calculate_cost_per_unit()
-                return round(cost_per_unit * qty, 2)
+                try:
+                    cost_per_unit = ingredient.calculate_cost_per_unit()
+                    if cost_per_unit is None or cost_per_unit <= 0:
+                        import logging
+                        logging.warning(f"HomemadeIngredient {ingredient.id} has zero or invalid cost_per_unit: {cost_per_unit}")
+                        return 0.0
+                    # For HomemadeIngredient, calculate_cost_per_unit returns cost per ml
+                    # So we need to use quantity_ml, not just quantity
+                    qty_ml = self.quantity_ml if self.quantity_ml is not None and self.quantity_ml > 0 else qty
+                    if qty_ml is None or qty_ml <= 0:
+                        import logging
+                        logging.warning(f"RecipeIngredient {self.id} has zero or invalid quantity_ml: {qty_ml}")
+                        return 0.0
+                    cost = cost_per_unit * qty_ml
+                    return round(cost, 2)
+                except Exception as e:
+                    import logging
+                    logging.error(f"Error calculating cost for HomemadeIngredient {ingredient.id} in RecipeIngredient {self.id}: {str(e)}", exc_info=True)
+                    return 0.0
             
             elif isinstance(ingredient, Recipe):
                 recipe_cost = ingredient.calculate_total_cost()
