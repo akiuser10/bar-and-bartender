@@ -35,27 +35,39 @@ def recipes_list():
             recipes = []
         
         recipe_type_filter = request.args.get('type', '')
-        category_filter = (request.args.get('category', '') or '').lower()
+        category_filter = request.args.get('category', '') or ''
         
         if recipe_type_filter:
             recipes = [r for r in recipes if r.recipe_type == recipe_type_filter]
         if category_filter:
-            # Map category slug to db_labels from CATEGORY_CONFIG
-            from utils.constants import resolve_recipe_category
-            canonical, config = resolve_recipe_category(category_filter)
-            if canonical and config:
-                labels = set(config['db_labels'])
-                # Prioritize type field over recipe_type since recipe_type is generic ('Beverage')
-                # and type field has specific values ('Beverages', 'Mocktails', 'Cocktails')
-                def matches_category(recipe):
-                    # First check type field (most specific)
-                    if recipe.type and recipe.type in labels:
+            # Filter by actual category value (food_category or derived category)
+            def matches_category(recipe):
+                # First check food_category (most specific)
+                if recipe.food_category:
+                    # Normalize for comparison (handle spaces, case)
+                    recipe_cat = recipe.food_category.strip()
+                    filter_cat = category_filter.replace('-', ' ').strip()
+                    if recipe_cat.lower() == filter_cat.lower():
                         return True
-                    # Only check recipe_type if type is None or empty
-                    if not recipe.type and recipe.recipe_type and recipe.recipe_type in labels:
-                        return True
-                    return False
-                recipes = [r for r in recipes if matches_category(r)]
+                else:
+                    # Use the same logic as template to derive category
+                    cat_key = (recipe.type or recipe.recipe_type or '').lower()
+                    derived_cat = None
+                    if cat_key in ['cocktails','classic']:
+                        derived_cat = 'Cocktail'
+                    elif cat_key in ['mocktails','signature']:
+                        derived_cat = 'Mocktail'
+                    elif cat_key in ['beverages','beverage']:
+                        derived_cat = 'Beverage'
+                    elif cat_key in ['food']:
+                        derived_cat = 'Food'
+                    
+                    if derived_cat:
+                        filter_cat = category_filter.replace('-', ' ').strip()
+                        if derived_cat.lower() == filter_cat.lower():
+                            return True
+                return False
+            recipes = [r for r in recipes if matches_category(r)]
         
         # Ensure ingredients are loaded for cost calculation
         for recipe in recipes:
@@ -69,7 +81,27 @@ def recipes_list():
             except Exception as recipe_e:
                 current_app.logger.warning(f"Error loading ingredients for recipe {recipe.id}: {str(recipe_e)}")
         
-        return render_template('recipes/list.html', recipes=recipes, selected_type=recipe_type_filter, selected_category=category_filter)
+        # Collect unique category values from recipes (same logic as in template)
+        unique_categories = set()
+        for recipe in recipes:
+            if recipe.food_category:
+                unique_categories.add(recipe.food_category)
+            else:
+                # Use the same logic as the template to derive category
+                cat_key = (recipe.type or recipe.recipe_type or '').lower()
+                if cat_key in ['cocktails','classic']:
+                    unique_categories.add('Cocktail')
+                elif cat_key in ['mocktails','signature']:
+                    unique_categories.add('Mocktail')
+                elif cat_key in ['beverages','beverage']:
+                    unique_categories.add('Beverage')
+                elif cat_key in ['food']:
+                    unique_categories.add('Food')
+        
+        # Sort categories for consistent display
+        unique_categories = sorted(unique_categories)
+        
+        return render_template('recipes/list.html', recipes=recipes, selected_type=recipe_type_filter, selected_category=category_filter, unique_categories=unique_categories)
     except Exception as e:
         current_app.logger.error(f"Error in recipes_list: {str(e)}", exc_info=True)
         flash('An error occurred while loading recipes.', 'error')

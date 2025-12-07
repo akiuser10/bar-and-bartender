@@ -23,10 +23,9 @@
     <label for="categoryFilter">Category:</label>
     <select id="categoryFilter" onchange="filterByCategory()">
         <option value="">All Categories</option>
-        <option value="cocktails" {% if selected_category == 'cocktails' %}selected{% endif %}>Cocktails</option>
-        <option value="mocktails" {% if selected_category == 'mocktails' %}selected{% endif %}>Mocktails</option>
-        <option value="beverages" {% if selected_category == 'beverages' %}selected{% endif %}>Beverages</option>
-        <option value="food" {% if selected_category == 'food' %}selected{% endif %}>Food</option>
+        {% for cat in unique_categories %}
+        <option value="{{ cat|lower|replace(' ', '-') }}" {% if selected_category == (cat|lower|replace(' ', '-')) %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
     </select>
 </div>
 
