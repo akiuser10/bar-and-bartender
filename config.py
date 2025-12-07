@@ -35,6 +35,6 @@ class Config:
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', MAIL_USERNAME)
     
-    # Allow skipping email verification (for development/testing)
-    # Set SKIP_EMAIL_VERIFICATION=true in Railway to allow registration without email
-    SKIP_EMAIL_VERIFICATION = os.environ.get('SKIP_EMAIL_VERIFICATION', 'false').lower() in ['true', 'on', '1']
+    # Email verification is MANDATORY for all new registrations
+    # This setting is kept for backward compatibility but is no longer used
+    # Email verification cannot be skipped

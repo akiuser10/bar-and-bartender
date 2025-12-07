@@ -101,46 +101,19 @@ def register():
                     flash(f'Database error. Please try again or contact administrator. Error: {str(e2)}')
                     return render_template('register.html')
             
-            # Check if email verification should be skipped
-            skip_email = current_app.config.get('SKIP_EMAIL_VERIFICATION', False)
-            
-            # Send verification email (code is ONLY sent via email, never shown on page)
-            email_sent = send_verification_email(email, code) if not skip_email else False
+            # Email verification is MANDATORY - send verification email
+            # Code is ONLY sent via email, never shown on page
+            email_sent = send_verification_email(email, code)
             
             if email_sent:
                 flash('Verification code sent to your email. Please check your inbox (and spam folder).')
                 return render_template('verify_email.html', email=email)
-            elif skip_email:
-                # Skip email verification and create user directly
-                current_app.logger.warning(f'Email verification skipped - creating user directly for {email}')
-                try:
-                    user = User(
-                        username=username,
-                        email=email,
-                        password=session['reg_password']
-                    )
-                    db.session.add(user)
-                    
-                    # Mark verification as used
-                    verification.verified = True
-                    db.session.commit()
-                    
-                    # Clean up session
-                    session.pop('reg_username', None)
-                    session.pop('reg_email', None)
-                    session.pop('reg_password', None)
-                    
-                    flash('Account created successfully! Email verification was skipped. Please log in.')
-                    return redirect(url_for('auth.login'))
-                except Exception as e:
-                    db.session.rollback()
-                    current_app.logger.error(f'Error creating user when skipping email: {str(e)}', exc_info=True)
-                    flash(f'Error creating account: {str(e)}. Please try again.')
-                    return render_template('register.html')
             else:
                 # If email not configured or failed, show error and don't proceed
-                current_app.logger.error(f'Email sending failed - cannot send verification code to {email}')
-                flash('⚠️ Unable to send verification email. This could be due to:\n'
+                # Email verification is required - registration cannot proceed without it
+                current_app.logger.error(f'Email sending failed - cannot send verification code to {email}. Email verification is required.')
+                flash('⚠️ Unable to send verification email. Email verification is required to complete registration.\n\n'
+                      'This could be due to:\n'
                       '1. Email service not configured\n'
                       '2. Email service error\n'
                       '3. Invalid email address\n\n'
