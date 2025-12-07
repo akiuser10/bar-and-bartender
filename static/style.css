@@ -60,7 +60,8 @@ canvas {
     width: auto;
     max-width: 200px;
     object-fit: contain;
-    display: block;
+    display: block !important;
+    visibility: visible;
 }
 
 .logo-text {
