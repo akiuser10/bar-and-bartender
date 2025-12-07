@@ -304,10 +304,29 @@ def add_recipe(category):
             
             seen_secondary.add(secondary_key)
             try:
+                # Ensure ingredients are loaded for cost calculation
+                _ = sec.ingredients
+                for item in sec.ingredients:
+                    try:
+                        _ = item.product
+                    except Exception:
+                        pass
+                
+                total_cost = sec.calculate_cost()
                 cost_per_unit = sec.calculate_cost_per_unit()
+                
                 if cost_per_unit is None or cost_per_unit <= 0:
-                    current_app.logger.warning(f'Secondary ingredient {sec.id} ({sec.unique_code}) has zero or invalid cost_per_unit: {cost_per_unit}. Total cost: {sec.calculate_cost()}, Total volume: {sec.total_volume_ml}')
+                    current_app.logger.warning(
+                        f'Secondary ingredient {sec.id} ({sec.unique_code}) has zero or invalid cost_per_unit: {cost_per_unit}. '
+                        f'Total cost: {total_cost}, Total volume: {sec.total_volume_ml}, '
+                        f'Has ingredients: {len(sec.ingredients) if sec.ingredients else 0}'
+                    )
                     cost_per_unit = 0.0
+                else:
+                    current_app.logger.debug(
+                        f'Secondary ingredient {sec.id} ({sec.unique_code}): cost_per_unit={cost_per_unit}, '
+                        f'total_cost={total_cost}, total_volume_ml={sec.total_volume_ml}'
+                    )
             except Exception as e:
                 current_app.logger.error(f'Error calculating cost_per_unit for secondary ingredient {sec.id} ({sec.unique_code}): {str(e)}', exc_info=True)
                 cost_per_unit = 0.0

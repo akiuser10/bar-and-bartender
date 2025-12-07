@@ -107,13 +107,26 @@ class HomemadeIngredient(db.Model):
     def calculate_cost_per_unit(self):
         """Calculate cost per unit (ml, gram, etc.)"""
         try:
-            if self.total_volume_ml and self.total_volume_ml > 0:
-                total_cost = self.calculate_cost()
-                return round(total_cost / self.total_volume_ml, 4)
-            return 0.0
+            if not self.total_volume_ml or self.total_volume_ml <= 0:
+                import logging
+                logging.warning(f"HomemadeIngredient {self.id} ({self.unique_code}) has invalid total_volume_ml: {self.total_volume_ml}")
+                return 0.0
+            
+            total_cost = self.calculate_cost()
+            if total_cost is None or total_cost <= 0:
+                import logging
+                logging.warning(f"HomemadeIngredient {self.id} ({self.unique_code}) has zero or invalid total_cost: {total_cost}")
+                return 0.0
+            
+            cost_per_unit = round(total_cost / self.total_volume_ml, 4)
+            if cost_per_unit <= 0:
+                import logging
+                logging.warning(f"HomemadeIngredient {self.id} ({self.unique_code}) calculated cost_per_unit is zero: total_cost={total_cost}, total_volume_ml={self.total_volume_ml}")
+            
+            return cost_per_unit
         except Exception as e:
             import logging
-            logging.error(f"Error calculating cost per unit for HomemadeIngredient {self.id}: {str(e)}")
+            logging.error(f"Error calculating cost per unit for HomemadeIngredient {self.id} ({self.unique_code}): {str(e)}", exc_info=True)
             return 0.0
 
 class HomemadeIngredientItem(db.Model):
@@ -360,20 +373,29 @@ class RecipeIngredient(db.Model):
                     cost_per_unit = ingredient.calculate_cost_per_unit()
                     if cost_per_unit is None or cost_per_unit <= 0:
                         import logging
-                        logging.warning(f"HomemadeIngredient {ingredient.id} has zero or invalid cost_per_unit: {cost_per_unit}")
+                        logging.warning(f"RecipeIngredient {self.id}: HomemadeIngredient {ingredient.id} ({ingredient.unique_code}) has zero or invalid cost_per_unit: {cost_per_unit}. Total cost: {ingredient.calculate_cost()}, Total volume: {ingredient.total_volume_ml}")
                         return 0.0
+                    
                     # For HomemadeIngredient, calculate_cost_per_unit returns cost per ml
                     # So we need to use quantity_ml, not just quantity
                     qty_ml = self.quantity_ml if self.quantity_ml is not None and self.quantity_ml > 0 else qty
                     if qty_ml is None or qty_ml <= 0:
                         import logging
-                        logging.warning(f"RecipeIngredient {self.id} has zero or invalid quantity_ml: {qty_ml}")
+                        logging.warning(f"RecipeIngredient {self.id}: has zero or invalid quantity_ml: {qty_ml}, quantity: {qty}, unit: {self.unit}")
                         return 0.0
+                    
                     cost = cost_per_unit * qty_ml
-                    return round(cost, 2)
+                    calculated_cost = round(cost, 2)
+                    
+                    # Log successful calculation for debugging
+                    if calculated_cost <= 0:
+                        import logging
+                        logging.warning(f"RecipeIngredient {self.id}: Calculated cost is zero. cost_per_unit={cost_per_unit}, qty_ml={qty_ml}, cost={cost}")
+                    
+                    return calculated_cost
                 except Exception as e:
                     import logging
-                    logging.error(f"Error calculating cost for HomemadeIngredient {ingredient.id} in RecipeIngredient {self.id}: {str(e)}", exc_info=True)
+                    logging.error(f"Error calculating cost for HomemadeIngredient {ingredient.id} ({ingredient.unique_code}) in RecipeIngredient {self.id}: {str(e)}", exc_info=True)
                     return 0.0
             
             elif isinstance(ingredient, Recipe):
