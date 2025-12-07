@@ -515,10 +515,18 @@ button.btn {
     padding: 15px;
     margin-bottom: 20px;
     border: 1px solid #c3e6cb;
+    border-radius: 4px;
+}
+
+.flash-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
 }
 
 .flash p {
     margin: 0;
+    white-space: pre-line;
 }
 
 .empty-state-message {

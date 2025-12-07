@@ -14,7 +14,9 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
+    from flask import current_app
     if request.method == 'POST':
+        current_app.logger.info('Registration form submitted')
         try:
             # Initial registration step - collect user info and send code
             username = request.form.get('username', '').strip()
@@ -136,8 +138,10 @@ def register():
             
         except Exception as e:
             from flask import current_app
+            import traceback
             current_app.logger.error(f'Registration error: {str(e)}', exc_info=True)
-            flash(f'An error occurred during registration: {str(e)}. Please try again.')
+            current_app.logger.error(f'Traceback: {traceback.format_exc()}')
+            flash(f'An error occurred during registration: {str(e)}. Please try again.', 'error')
             return render_template('register.html')
 
     return render_template('register.html')

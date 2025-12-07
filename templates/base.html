@@ -32,13 +32,13 @@
     </header>
 
     <main class="content">
-        {% with messages = get_flashed_messages() %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div class="flash">
-                    {% for msg in messages %}
+                {% for category, msg in messages %}
+                    <div class="flash {% if category == 'error' %}flash-error{% endif %}">
                         <p>{{ msg }}</p>
-                    {% endfor %}
-                </div>
+                    </div>
+                {% endfor %}
             {% endif %}
         {% endwith %}
 
