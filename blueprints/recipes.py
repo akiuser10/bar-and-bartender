@@ -485,7 +485,7 @@ def add_recipe(category):
 
                 db.session.commit()
                 flash(f'{config["add_label"]} recipe added successfully!')
-                return redirect(url_for('recipes.recipe_list', category=canonical))
+                return redirect(url_for('recipes.recipes_list'))
             except Exception as e:
                 db.session.rollback()
                 error_msg = str(e)
@@ -751,7 +751,7 @@ def edit_recipe(id):
 
                 db.session.commit()
                 flash('Recipe updated successfully!')
-                return redirect(url_for('recipes.recipe_list', category=category_slug))
+                return redirect(url_for('recipes.recipes_list'))
             except Exception as e:
                 db.session.rollback()
                 current_app.logger.error(f"Error updating recipe: {str(e)}", exc_info=True)
