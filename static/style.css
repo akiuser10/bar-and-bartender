@@ -64,17 +64,7 @@ canvas {
 }
 
 .logo-text {
-    display: inline;
-}
-
-/* Hide text when logo image loads successfully */
-.logo-link:has(img:not([style*="display: none"])) .logo-text {
-    display: none;
-}
-
-/* Show text only when image fails to load */
-.logo-link img[style*="display: none"] + .logo-text {
-    display: inline;
+    display: none; /* Hidden by default, shown only if image fails to load */
 }
 
 .nav-center {
