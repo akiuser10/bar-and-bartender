@@ -407,39 +407,40 @@ def bulk_upload_products():
                 category = 'Other'
 
             sub_cat_col = normalized_columns.get('SUB CATEGORY')
+            sub_category = 'Other'  # Default value
+            sub_category_from_excel = False  # Track if we got a value from Excel
+            
             # Preserve the exact sub_category from Excel sheet if it exists and is not empty
             if sub_cat_col:
                 try:
                     sub_category_value = row[sub_cat_col]
                     # Check if value is NaN or empty using pandas
-                    if pd.isna(sub_category_value) or sub_category_value is None:
-                        sub_category = 'Other'
-                    else:
-                        # Preserve the exact value from Excel, even if it's "Other"
-                        sub_category = str(sub_category_value).strip()
-                        if not sub_category:  # Empty string after strip
-                            sub_category = 'Other'
-                except (KeyError, IndexError):
-                    sub_category = 'Other'
+                    if not pd.isna(sub_category_value) and sub_category_value is not None:
+                        sub_category_str = str(sub_category_value).strip()
+                        if sub_category_str:  # Not empty after strip
+                            sub_category = sub_category_str
+                            sub_category_from_excel = True
+                            current_app.logger.info(f'Preserved sub_category from Excel: "{sub_category}" for "{description}"')
+                except (KeyError, IndexError, Exception) as e:
+                    current_app.logger.warning(f'Error reading sub_category column for "{description}": {str(e)}')
+                    # Keep default 'Other', sub_category_from_excel remains False
             else:
-                # Column doesn't exist in Excel
-                sub_category = 'Other'
+                current_app.logger.debug(f'SUB CATEGORY column not found in Excel for "{description}"')
             
             # Use AI to categorize ONLY if category or sub_category is truly missing/empty
-            # Don't use AI if sub_category has a value from the Excel sheet (even if it's "Other")
+            # IMPORTANT: Never use AI if sub_category was explicitly set from Excel (even if it's "Other")
             category_missing = not category or category.strip() == '' or category.strip() == 'Other'
-            # Only use AI for sub_category if the column was missing or the value was truly empty/NaN
-            sub_category_missing = (not sub_cat_col or 
-                                   (sub_cat_col and (pd.isna(row.get(sub_cat_col)) or 
-                                                    str(row.get(sub_cat_col)).strip() == '')))
+            # Only use AI for sub_category if we didn't get a value from Excel
+            sub_category_missing = not sub_category_from_excel
             
+            # Only use AI if category is missing OR sub_category was not found in Excel
             if category_missing or sub_category_missing:
                 try:
                     ai_category, ai_sub_category = categorize_product_ai(description, supplier)
                     if ai_category and category_missing:
                         category = ai_category
                         current_app.logger.info(f'AI categorized "{description}" as category: {category}')
-                    # Only overwrite sub_category if it was truly missing (column missing or empty/NaN)
+                    # Only overwrite sub_category if it was NOT found in Excel
                     if ai_sub_category and sub_category_missing:
                         sub_category = ai_sub_category
                         current_app.logger.info(f'AI categorized "{description}" as sub_category: {sub_category}')
