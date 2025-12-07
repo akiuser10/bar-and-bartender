@@ -109,15 +109,22 @@ def register():
                 flash('Verification code sent to your email. Please check your inbox (and spam folder).')
                 return render_template('verify_email.html', email=email)
             else:
-                # If email not configured or failed, show error and don't proceed
+                # If email not configured or failed, show detailed error
                 # Email verification is required - registration cannot proceed without it
-                current_app.logger.error(f'Email sending failed - cannot send verification code to {email}. Email verification is required.')
-                flash('⚠️ Unable to send verification email. Email verification is required to complete registration.\n\n'
-                      'This could be due to:\n'
-                      '1. Email service not configured\n'
-                      '2. Email service error\n'
-                      '3. Invalid email address\n\n'
-                      'Please contact administrator or try again later.', 'error')
+                mail_username = current_app.config.get('MAIL_USERNAME')
+                mail_password = current_app.config.get('MAIL_PASSWORD')
+                mail_server = current_app.config.get('MAIL_SERVER', 'Not set')
+                
+                # Check what specifically failed
+                if not mail_username or not mail_password:
+                    error_detail = 'Email service is not configured. Please contact the administrator to set up email service.'
+                    current_app.logger.error(f'Email not configured - MAIL_USERNAME={bool(mail_username)}, MAIL_PASSWORD={bool(mail_password)}')
+                else:
+                    error_detail = f'Email service is configured but failed to send. Server: {mail_server}. Please try again or contact administrator.'
+                    current_app.logger.error(f'Email sending failed - MAIL_SERVER={mail_server}, email={email}')
+                
+                flash(f'⚠️ Unable to send verification email. Email verification is required to complete registration.\n\n{error_detail}\n\nPlease contact the administrator if this problem persists.', 'error')
+                
                 # Clean up the verification code since we can't send it
                 try:
                     db.session.delete(verification)

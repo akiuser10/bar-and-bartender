@@ -77,9 +77,13 @@ Chefs & Bartenders Team
     except Exception as e:
         error_msg = str(e)
         current_app.logger.error(f'Failed to send verification email to {email}: {error_msg}', exc_info=True)
-        # Log more details about the error
+        # Log more details about the error for debugging
         if 'authentication' in error_msg.lower() or 'login' in error_msg.lower():
-            current_app.logger.error('Email authentication failed - check MAIL_USERNAME and MAIL_PASSWORD')
+            current_app.logger.error('Email authentication failed - check MAIL_USERNAME and MAIL_PASSWORD. For Gmail, use App Password, not regular password.')
         elif 'connection' in error_msg.lower() or 'timeout' in error_msg.lower():
-            current_app.logger.error('Email connection failed - check MAIL_SERVER and network')
+            current_app.logger.error(f'Email connection failed - check MAIL_SERVER ({current_app.config.get("MAIL_SERVER")}) and network connectivity')
+        elif 'ssl' in error_msg.lower() or 'tls' in error_msg.lower():
+            current_app.logger.error('Email SSL/TLS error - check MAIL_USE_TLS setting')
+        else:
+            current_app.logger.error(f'Unknown email error: {error_msg}')
         return False
