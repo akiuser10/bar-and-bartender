@@ -47,7 +47,8 @@ class Config:
     # Debug logging (only in development or if explicitly enabled)
     if os.environ.get('DEBUG_MAIL_CONFIG', 'false').lower() == 'true':
         import logging
-        logging.info(f'MAIL config - USERNAME={bool(MAIL_USERNAME)}, PASSWORD={bool(MAIL_PASSWORD)}, PASSWORD_LEN={len(str(mail_pwd_raw)) if mail_pwd_raw else 0)}')
+        pwd_len = len(str(mail_pwd_raw)) if mail_pwd_raw else 0
+        logging.info(f'MAIL config - USERNAME={bool(MAIL_USERNAME)}, PASSWORD={bool(MAIL_PASSWORD)}, PASSWORD_LEN={pwd_len}')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', MAIL_USERNAME)
     
     # Email verification is MANDATORY for all new registrations
