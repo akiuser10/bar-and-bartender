@@ -35,7 +35,11 @@ def create_app(config_object='config.Config'):
     login_manager.init_app(app)
     # Initialize mail (optional - won't crash if email not configured)
     try:
+        # Log mail configuration before initializing (for debugging)
+        import os
+        app.logger.info(f'Mail config before init - MAIL_SERVER={app.config.get("MAIL_SERVER")}, MAIL_USERNAME={bool(app.config.get("MAIL_USERNAME"))}, MAIL_PASSWORD={bool(app.config.get("MAIL_PASSWORD"))}, ENV_MAIL_PASSWORD={bool(os.environ.get("MAIL_PASSWORD"))}')
         mail.init_app(app)
+        app.logger.info('Mail extension initialized successfully')
     except Exception as e:
         app.logger.warning(f'Mail extension initialization warning: {str(e)}')
     
@@ -113,17 +117,17 @@ def create_app(config_object='config.Config'):
     # Initialize database and run schema updates
     with app.app_context():
         try:
-            # Create upload directories
+        # Create upload directories
             upload_folder = app.config['UPLOAD_FOLDER']
             os.makedirs(upload_folder, exist_ok=True)
             os.makedirs(os.path.join(upload_folder, 'products'), exist_ok=True)
             os.makedirs(os.path.join(upload_folder, 'recipes'), exist_ok=True)
-            
-            # Create all tables
-            db.create_all()
-            
-            # Run schema updates
-            ensure_schema_updates()
+        
+        # Create all tables
+        db.create_all()
+        
+        # Run schema updates
+        ensure_schema_updates()
         except Exception as e:
             # Log error but don't crash - allow app to start
             # Database/table creation will happen on first request if needed

@@ -35,6 +35,10 @@ def send_verification_email(email, code):
         env_mail_password = os.environ.get('MAIL_PASSWORD')
         env_mail_password_len = len(env_mail_password) if env_mail_password else 0
         
+        # Debug: List all MAIL_* environment variables (for troubleshooting)
+        mail_env_vars = {k: 'SET' if v else 'NOT SET' for k, v in os.environ.items() if k.startswith('MAIL_')}
+        current_app.logger.info(f'All MAIL_* environment variables: {mail_env_vars}')
+        
         # Log email configuration status (without exposing password)
         current_app.logger.info(f'Email config check - MAIL_SERVER={mail_server}, MAIL_PORT={mail_port}, MAIL_USERNAME={bool(mail_username)}, MAIL_PASSWORD={bool(mail_password)}, ENV_MAIL_PASSWORD={bool(env_mail_password)} (length: {env_mail_password_len})')
         
