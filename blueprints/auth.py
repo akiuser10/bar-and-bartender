@@ -16,140 +16,145 @@ auth_bp = Blueprint('auth', __name__)
 def register():
     from flask import current_app
     if request.method == 'POST':
-        current_app.logger.info('=== REGISTRATION ATTEMPT STARTED ===')
-        current_app.logger.info(f'Form data received: username={request.form.get("username", "NOT PROVIDED")}, email={request.form.get("email", "NOT PROVIDED")}')
         try:
-            # Initial registration step - collect user info and send code
-            username = request.form.get('username', '').strip()
-            email = request.form.get('email', '').strip()
-            password = request.form.get('password', '')
-            password_confirm = request.form.get('password_confirm', '')
-
-            # Validate inputs
-            if not username or not email or not password or not password_confirm:
-                current_app.logger.warning(f'Validation failed: missing fields - username={bool(username)}, email={bool(email)}, password={bool(password)}, password_confirm={bool(password_confirm)}')
-                flash('Please fill in all fields.', 'error')
-                return render_template('register.html')
-            
-            # Validate passwords match
-            if password != password_confirm:
-                flash('Passwords do not match. Please try again.')
-                return render_template('register.html')
-            
-            # Validate password length
-            if len(password) < 6:
-                flash('Password must be at least 6 characters long.')
-                return render_template('register.html')
-
-            # Validate email format
-            if '@' not in email or '.' not in email.split('@')[1]:
-                flash('Please enter a valid email address.')
-                return render_template('register.html')
-
-            # Check if email already registered
-            if User.query.filter_by(email=email).first():
-                flash('Email already registered. Please log in instead.')
-                return redirect(url_for('auth.login'))
-
-            # Check if username already taken
-            if User.query.filter_by(username=username).first():
-                flash('Username already taken. Please choose another.')
-                return render_template('register.html')
-
-            # Generate verification code
-            code = generate_verification_code()
-            
-            # Store registration data in session temporarily
-            session['reg_username'] = username
-            session['reg_email'] = email
-            session['reg_password'] = generate_password_hash(password)
-            
-            # Ensure VerificationCode table exists
-            from flask import current_app
             try:
-                # Try to create all tables if they don't exist
-                db.create_all()
-            except Exception as e:
-                current_app.logger.warning(f'Table creation check: {str(e)}')
-            
-            # Delete any existing verification codes for this email
-            try:
-                VerificationCode.query.filter_by(email=email).delete()
-                db.session.commit()
-            except Exception as e:
-                current_app.logger.warning(f'Could not delete old verification codes: {str(e)}')
-                db.session.rollback()
-            
-            # Create new verification code record
-            try:
-                verification = VerificationCode(
-                    email=email,
-                    code=code,
-                    username=username,
-                    password_hash=session['reg_password'],
-                    expires_at=datetime.utcnow() + timedelta(minutes=10)
-                )
-                db.session.add(verification)
-                db.session.commit()
-            except Exception as e:
-                current_app.logger.error(f'Database error creating verification code: {str(e)}', exc_info=True)
-                db.session.rollback()
-                # Try creating table again and retry
+                current_app.logger.info('=== REGISTRATION ATTEMPT STARTED ===')
+                current_app.logger.info(f'Form data received: username={request.form.get("username", "NOT PROVIDED")}, email={request.form.get("email", "NOT PROVIDED")}')
+            except:
+                pass  # Don't crash if logging fails
+                # Initial registration step - collect user info and send code
+                username = request.form.get('username', '').strip()
+                email = request.form.get('email', '').strip()
+                password = request.form.get('password', '')
+                password_confirm = request.form.get('password_confirm', '')
+
+                # Validate inputs
+                if not username or not email or not password or not password_confirm:
+                    current_app.logger.warning(f'Validation failed: missing fields - username={bool(username)}, email={bool(email)}, password={bool(password)}, password_confirm={bool(password_confirm)}')
+                    flash('Please fill in all fields.', 'error')
+                    return render_template('register.html')
+                
+                # Validate passwords match
+                if password != password_confirm:
+                    flash('Passwords do not match. Please try again.')
+                    return render_template('register.html')
+                
+                # Validate password length
+                if len(password) < 6:
+                    flash('Password must be at least 6 characters long.')
+                    return render_template('register.html')
+
+                # Validate email format
+                if '@' not in email or '.' not in email.split('@')[1]:
+                    flash('Please enter a valid email address.')
+                    return render_template('register.html')
+
+                # Check if email already registered
+                if User.query.filter_by(email=email).first():
+                    flash('Email already registered. Please log in instead.')
+                    return redirect(url_for('auth.login'))
+
+                # Check if username already taken
+                if User.query.filter_by(username=username).first():
+                    flash('Username already taken. Please choose another.')
+                    return render_template('register.html')
+
+                # Generate verification code
+                code = generate_verification_code()
+                
+                # Store registration data in session temporarily
+                session['reg_username'] = username
+                session['reg_email'] = email
+                session['reg_password'] = generate_password_hash(password)
+                
+                # Ensure VerificationCode table exists
+                from flask import current_app
                 try:
+                    # Try to create all tables if they don't exist
                     db.create_all()
+                except Exception as e:
+                    current_app.logger.warning(f'Table creation check: {str(e)}')
+                
+                # Delete any existing verification codes for this email
+                try:
+                    VerificationCode.query.filter_by(email=email).delete()
+                    db.session.commit()
+                except Exception as e:
+                    current_app.logger.warning(f'Could not delete old verification codes: {str(e)}')
+                    db.session.rollback()
+                
+                # Create new verification code record
+                try:
+                    verification = VerificationCode(
+                        email=email,
+                        code=code,
+                        username=username,
+                        password_hash=session['reg_password'],
+                        expires_at=datetime.utcnow() + timedelta(minutes=10)
+                    )
                     db.session.add(verification)
                     db.session.commit()
-                except Exception as e2:
+                except Exception as e:
+                    current_app.logger.error(f'Database error creating verification code: {str(e)}', exc_info=True)
                     db.session.rollback()
-                    current_app.logger.error(f'Failed to create verification code after retry: {str(e2)}', exc_info=True)
-                    flash(f'Database error. Please try again or contact administrator. Error: {str(e2)}')
-                    return render_template('register.html')
-            
-            # Email verification is MANDATORY - send verification email
-            # Code is ONLY sent via email, never shown on page
-            current_app.logger.info(f'Attempting to send verification email to {email} with code {code}')
-            current_app.logger.info(f'Email config status - MAIL_USERNAME={bool(current_app.config.get("MAIL_USERNAME"))}, MAIL_PASSWORD={bool(current_app.config.get("MAIL_PASSWORD"))}, MAIL_SERVER={current_app.config.get("MAIL_SERVER", "Not set")}')
-            email_sent = send_verification_email(email, code)
-            current_app.logger.info(f'Email send result: {email_sent}')
-            
-            if email_sent:
-                current_app.logger.info(f'Email sent successfully to {email}')
-                flash('Verification code sent to your email. Please check your inbox (and spam folder).', 'success')
-                return render_template('verify_email.html', email=email)
-            else:
-                # If email not configured or failed, show detailed error
-                # Email verification is required - registration cannot proceed without it
-                mail_username = current_app.config.get('MAIL_USERNAME')
-                mail_password = current_app.config.get('MAIL_PASSWORD')
-                mail_server = current_app.config.get('MAIL_SERVER', 'Not set')
+                    # Try creating table again and retry
+                    try:
+                        db.create_all()
+                        db.session.add(verification)
+                        db.session.commit()
+                    except Exception as e2:
+                        db.session.rollback()
+                        current_app.logger.error(f'Failed to create verification code after retry: {str(e2)}', exc_info=True)
+                        flash(f'Database error. Please try again or contact administrator. Error: {str(e2)}')
+                        return render_template('register.html')
                 
-                # Check what specifically failed
-                if not mail_username or not mail_password:
-                    error_detail = 'Email service is not configured on the server. The administrator needs to set up MAIL_USERNAME and MAIL_PASSWORD environment variables.'
-                    current_app.logger.error(f'Email not configured - MAIL_USERNAME={bool(mail_username)}, MAIL_PASSWORD={bool(mail_password)}')
+                # Email verification is MANDATORY - send verification email
+                # Code is ONLY sent via email, never shown on page
+                current_app.logger.info(f'Attempting to send verification email to {email} with code {code}')
+                current_app.logger.info(f'Email config status - MAIL_USERNAME={bool(current_app.config.get("MAIL_USERNAME"))}, MAIL_PASSWORD={bool(current_app.config.get("MAIL_PASSWORD"))}, MAIL_SERVER={current_app.config.get("MAIL_SERVER", "Not set")}')
+                email_sent = send_verification_email(email, code)
+                current_app.logger.info(f'Email send result: {email_sent}')
+                
+                if email_sent:
+                    current_app.logger.info(f'Email sent successfully to {email}')
+                    flash('Verification code sent to your email. Please check your inbox (and spam folder).', 'success')
+                    return render_template('verify_email.html', email=email)
                 else:
-                    error_detail = f'Email service is configured (Server: {mail_server}) but failed to send. This could be due to incorrect credentials or network issues.'
-                    current_app.logger.error(f'Email sending failed - MAIL_SERVER={mail_server}, email={email}')
-                
-                error_message = f'⚠️ Unable to send verification email. Email verification is required to complete registration.\n\n{error_detail}\n\nPlease contact the administrator to configure email service.'
-                current_app.logger.error(f'Registration blocked due to email failure: {error_message}')
-                flash(error_message, 'error')
-                
-                # Clean up the verification code since we can't send it
-                try:
-                    db.session.delete(verification)
-                    db.session.commit()
-                except Exception as cleanup_error:
-                    current_app.logger.warning(f'Error cleaning up verification code: {cleanup_error}')
-                    db.session.rollback()
-                session.clear()
-                return render_template('register.html')
-            
+                    # If email not configured or failed, show detailed error
+                    # Email verification is required - registration cannot proceed without it
+                    mail_username = current_app.config.get('MAIL_USERNAME')
+                    mail_password = current_app.config.get('MAIL_PASSWORD')
+                    mail_server = current_app.config.get('MAIL_SERVER', 'Not set')
+                    
+                    # Check what specifically failed
+                    if not mail_username or not mail_password:
+                        error_detail = 'Email service is not configured on the server. The administrator needs to set up MAIL_USERNAME and MAIL_PASSWORD environment variables.'
+                        current_app.logger.error(f'Email not configured - MAIL_USERNAME={bool(mail_username)}, MAIL_PASSWORD={bool(mail_password)}')
+                    else:
+                        error_detail = f'Email service is configured (Server: {mail_server}) but failed to send. This could be due to incorrect credentials or network issues.'
+                        current_app.logger.error(f'Email sending failed - MAIL_SERVER={mail_server}, email={email}')
+                    
+                    error_message = f'⚠️ Unable to send verification email. Email verification is required to complete registration.\n\n{error_detail}\n\nPlease contact the administrator to configure email service.'
+                    current_app.logger.error(f'Registration blocked due to email failure: {error_message}')
+                    flash(error_message, 'error')
+                    
+                    # Clean up the verification code since we can't send it
+                    try:
+                        db.session.delete(verification)
+                        db.session.commit()
+                    except Exception as cleanup_error:
+                        current_app.logger.warning(f'Error cleaning up verification code: {cleanup_error}')
+                        db.session.rollback()
+                    session.clear()
+                    return render_template('register.html')
         except Exception as e:
             from flask import current_app
             import traceback
-            current_app.logger.error(f'Registration error: {str(e)}', exc_info=True)
-            current_app.logger.error(f'Traceback: {traceback.format_exc()}')
+            try:
+                current_app.logger.error(f'Registration error: {str(e)}', exc_info=True)
+                current_app.logger.error(f'Traceback: {traceback.format_exc()}')
+            except:
+                pass  # Don't crash if logging fails
             flash(f'An error occurred during registration: {str(e)}. Please try again.', 'error')
             return render_template('register.html')
 
