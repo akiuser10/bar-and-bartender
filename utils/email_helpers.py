@@ -43,8 +43,14 @@ def send_verification_email(email, code):
             mail_password = str(env_mail_password).strip()
             if mail_password:
                 current_app.logger.info(f'Using MAIL_PASSWORD from environment variable directly (length: {len(mail_password)})')
+                # Update config so Flask-Mail can use it
+                current_app.config['MAIL_PASSWORD'] = mail_password
             else:
                 current_app.logger.warning('MAIL_PASSWORD from environment is empty after stripping')
+        
+        # Final check - if still no password, log detailed error
+        if not mail_password:
+            current_app.logger.error(f'MAIL_PASSWORD is still None/empty. Config value: {current_app.config.get("MAIL_PASSWORD")}, Env value exists: {bool(env_mail_password)}, Env value length: {env_mail_password_len}')
         
         if not mail_username or not mail_password:
             current_app.logger.error(f'Email not configured - MAIL_USERNAME={bool(mail_username)} (value: {mail_username if mail_username else "None"}), MAIL_PASSWORD={bool(mail_password)}, ENV_MAIL_PASSWORD={bool(env_mail_password)}')
