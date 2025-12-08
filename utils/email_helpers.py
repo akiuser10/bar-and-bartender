@@ -28,6 +28,10 @@ def send_verification_email(email, code):
         mail_username = current_app.config.get('MAIL_USERNAME')
         mail_password = current_app.config.get('MAIL_PASSWORD')
         
+        # Strip whitespace from password (Gmail App Passwords can have spaces, but they're optional)
+        if mail_password:
+            mail_password = str(mail_password).strip()
+        
         if not mail_username or not mail_password:
             current_app.logger.warning(f'Email not configured - MAIL_USERNAME={bool(mail_username)}, MAIL_PASSWORD={bool(mail_password)}')
             return False
