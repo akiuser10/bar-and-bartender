@@ -32,9 +32,22 @@ class Config:
     MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
     MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
-    # Strip whitespace from password (Gmail App Passwords can have spaces, but they're optional)
+    # Get password from environment - Gmail App Passwords can have spaces, but they're optional
     mail_pwd_raw = os.environ.get('MAIL_PASSWORD')
-    MAIL_PASSWORD = mail_pwd_raw.strip() if mail_pwd_raw else None
+    # Only strip if password exists and is not empty
+    if mail_pwd_raw:
+        # Convert to string and strip whitespace
+        MAIL_PASSWORD = str(mail_pwd_raw).strip()
+        # If after stripping it's empty, set to None
+        if not MAIL_PASSWORD:
+            MAIL_PASSWORD = None
+    else:
+        MAIL_PASSWORD = None
+    
+    # Debug logging (only in development or if explicitly enabled)
+    if os.environ.get('DEBUG_MAIL_CONFIG', 'false').lower() == 'true':
+        import logging
+        logging.info(f'MAIL config - USERNAME={bool(MAIL_USERNAME)}, PASSWORD={bool(MAIL_PASSWORD)}, PASSWORD_LEN={len(str(mail_pwd_raw)) if mail_pwd_raw else 0)}')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', MAIL_USERNAME)
     
     # Email verification is MANDATORY for all new registrations

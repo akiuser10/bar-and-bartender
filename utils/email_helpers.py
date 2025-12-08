@@ -30,11 +30,24 @@ def send_verification_email(email, code):
         mail_server = current_app.config.get('MAIL_SERVER', 'Not set')
         mail_port = current_app.config.get('MAIL_PORT', 'Not set')
         
+        # Also check environment variables directly as fallback
+        import os
+        env_mail_password = os.environ.get('MAIL_PASSWORD')
+        env_mail_password_len = len(env_mail_password) if env_mail_password else 0
+        
         # Log email configuration status (without exposing password)
-        current_app.logger.info(f'Email config check - MAIL_SERVER={mail_server}, MAIL_PORT={mail_port}, MAIL_USERNAME={bool(mail_username)}, MAIL_PASSWORD={bool(mail_password)}')
+        current_app.logger.info(f'Email config check - MAIL_SERVER={mail_server}, MAIL_PORT={mail_port}, MAIL_USERNAME={bool(mail_username)}, MAIL_PASSWORD={bool(mail_password)}, ENV_MAIL_PASSWORD={bool(env_mail_password)} (length: {env_mail_password_len})')
+        
+        # If password not in config but exists in environment, use it
+        if not mail_password and env_mail_password:
+            mail_password = str(env_mail_password).strip()
+            if mail_password:
+                current_app.logger.info(f'Using MAIL_PASSWORD from environment variable directly (length: {len(mail_password)})')
+            else:
+                current_app.logger.warning('MAIL_PASSWORD from environment is empty after stripping')
         
         if not mail_username or not mail_password:
-            current_app.logger.error(f'Email not configured - MAIL_USERNAME={bool(mail_username)} (value: {mail_username if mail_username else "None"}), MAIL_PASSWORD={bool(mail_password)}')
+            current_app.logger.error(f'Email not configured - MAIL_USERNAME={bool(mail_username)} (value: {mail_username if mail_username else "None"}), MAIL_PASSWORD={bool(mail_password)}, ENV_MAIL_PASSWORD={bool(env_mail_password)}')
             return False
         
         # Validate email format
