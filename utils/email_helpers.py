@@ -27,13 +27,14 @@ def send_verification_email(email, code):
         # Check if email is configured
         mail_username = current_app.config.get('MAIL_USERNAME')
         mail_password = current_app.config.get('MAIL_PASSWORD')
+        mail_server = current_app.config.get('MAIL_SERVER', 'Not set')
+        mail_port = current_app.config.get('MAIL_PORT', 'Not set')
         
-        # Strip whitespace from password (Gmail App Passwords can have spaces, but they're optional)
-        if mail_password:
-            mail_password = str(mail_password).strip()
+        # Log email configuration status (without exposing password)
+        current_app.logger.info(f'Email config check - MAIL_SERVER={mail_server}, MAIL_PORT={mail_port}, MAIL_USERNAME={bool(mail_username)}, MAIL_PASSWORD={bool(mail_password)}')
         
         if not mail_username or not mail_password:
-            current_app.logger.warning(f'Email not configured - MAIL_USERNAME={bool(mail_username)}, MAIL_PASSWORD={bool(mail_password)}')
+            current_app.logger.error(f'Email not configured - MAIL_USERNAME={bool(mail_username)} (value: {mail_username if mail_username else "None"}), MAIL_PASSWORD={bool(mail_password)}')
             return False
         
         # Validate email format
@@ -41,6 +42,7 @@ def send_verification_email(email, code):
             current_app.logger.warning(f'Invalid email format: {email}')
             return False
         
+        # Create email message
         msg = Message(
             subject='Chefs & Bartenders - Email Verification Code',
             recipients=[email],
@@ -75,9 +77,15 @@ Chefs & Bartenders Team
 </body>
 </html>'''
         )
-        mail.send(msg)
-        current_app.logger.info(f'Verification email sent successfully to {email}')
-        return True
+        
+        current_app.logger.info(f'Attempting to send email via {mail_server} to {email}')
+        try:
+            mail.send(msg)
+            current_app.logger.info(f'Verification email sent successfully to {email}')
+            return True
+        except Exception as send_error:
+            current_app.logger.error(f'Error during mail.send(): {str(send_error)}', exc_info=True)
+            raise  # Re-raise to be caught by outer exception handler
     except Exception as e:
         error_msg = str(e)
         current_app.logger.error(f'Failed to send verification email to {email}: {error_msg}', exc_info=True)

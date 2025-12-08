@@ -108,6 +108,7 @@ def register():
             # Email verification is MANDATORY - send verification email
             # Code is ONLY sent via email, never shown on page
             current_app.logger.info(f'Attempting to send verification email to {email} with code {code}')
+            current_app.logger.info(f'Email config status - MAIL_USERNAME={bool(current_app.config.get("MAIL_USERNAME"))}, MAIL_PASSWORD={bool(current_app.config.get("MAIL_PASSWORD"))}, MAIL_SERVER={current_app.config.get("MAIL_SERVER", "Not set")}')
             email_sent = send_verification_email(email, code)
             current_app.logger.info(f'Email send result: {email_sent}')
             

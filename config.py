@@ -33,7 +33,8 @@ class Config:
     MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     # Strip whitespace from password (Gmail App Passwords can have spaces, but they're optional)
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', '').strip() if os.environ.get('MAIL_PASSWORD') else None
+    mail_pwd_raw = os.environ.get('MAIL_PASSWORD')
+    MAIL_PASSWORD = mail_pwd_raw.strip() if mail_pwd_raw else None
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', MAIL_USERNAME)
     
     # Email verification is MANDATORY for all new registrations
